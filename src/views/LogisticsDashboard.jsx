@@ -91,21 +91,21 @@ export default function LogisticsDashboard({ activeUser }) {
           <h2>Logistics Partner Dashboard</h2>
           <p style={{ color: "var(--gray-600)" }}>Accept shipping requests, update pickup and transit status, and track your delivery earnings.</p>
         </div>
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        <div className="dashboard-tabs">
           <button 
-            className={`btn btn-sm ${activeTab === "board" ? "btn-primary" : "btn-outline"}`}
+            className={`tab-pill ${activeTab === "board" ? "active" : ""}`}
             onClick={() => setActiveTab("board")}
           >
             Available Jobs ({availableJobs.length})
           </button>
           <button 
-            className={`btn btn-sm ${activeTab === "active" ? "btn-primary" : "btn-outline"}`}
+            className={`tab-pill ${activeTab === "active" ? "active" : ""}`}
             onClick={() => setActiveTab("active")}
           >
             My Active Trips ({activeJobs.length})
           </button>
           <button 
-            className={`btn btn-sm ${activeTab === "history" ? "btn-primary" : "btn-outline"}`}
+            className={`tab-pill ${activeTab === "history" ? "active" : ""}`}
             onClick={() => setActiveTab("history")}
           >
             Completed Jobs ({completedJobs.length})
@@ -187,7 +187,7 @@ export default function LogisticsDashboard({ activeUser }) {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 {availableJobs.map(job => (
-                  <div key={job.id} className="card" style={{ border: "1px solid var(--glass-border)", padding: "20px" }}>
+                  <div key={job.id} className="dashboard-order-card pending">
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--glass-border)", paddingBottom: "10px", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
                       <div>
                         <strong style={{ color: "white" }}>Order Request: {job.id}</strong>
@@ -247,7 +247,7 @@ export default function LogisticsDashboard({ activeUser }) {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginTop: "16px" }}>
                 {activeJobs.map(job => (
-                  <div key={job.id} className="card" style={{ borderLeft: "4px solid var(--secondary)", padding: "16px", background: "rgba(255,255,255,0.01)" }}>
+                  <div key={job.id} className="dashboard-order-card pending">
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px", borderBottom: "1px solid var(--glass-border)", paddingBottom: "8px", flexWrap: "wrap", gap: "8px" }}>
                       <strong style={{ color: "white" }}>Job for Order {job.id}</strong>
                       <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "var(--secondary-light)" }}>

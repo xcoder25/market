@@ -181,27 +181,27 @@ export default function FarmerDashboard({ activeUser, onSwitchView }) {
           <h2>Farmer Dashboard</h2>
           <p style={{ color: "var(--gray-600)" }}>Manage your farm listings, fulfill orders, and track your agricultural earnings.</p>
         </div>
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        <div className="dashboard-tabs">
           <button 
-            className={`btn btn-sm ${activeTab === "overview" ? "btn-primary" : "btn-outline"}`}
+            className={`tab-pill ${activeTab === "overview" ? "active" : ""}`}
             onClick={() => setActiveTab("overview")}
           >
             Overview
           </button>
           <button 
-            className={`btn btn-sm ${activeTab === "orders" ? "btn-primary" : "btn-outline"}`}
+            className={`tab-pill ${activeTab === "orders" ? "active" : ""}`}
             onClick={() => setActiveTab("orders")}
           >
             Orders ({activeOrdersCount})
           </button>
           <button 
-            className={`btn btn-sm ${activeTab === "products" ? "btn-primary" : "btn-outline"}`}
+            className={`tab-pill ${activeTab === "products" ? "active" : ""}`}
             onClick={() => setActiveTab("products")}
           >
             My Listings ({myProducts.length})
           </button>
           <button 
-            className={`btn btn-sm ${activeTab === "harvest" ? "btn-primary" : "btn-outline"}`}
+            className={`tab-pill ${activeTab === "harvest" ? "active" : ""}`}
             onClick={() => setActiveTab("harvest")}
           >
             Harvest Calendar
@@ -402,21 +402,13 @@ export default function FarmerDashboard({ activeUser, onSwitchView }) {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 {myOrders.map(order => (
-                  <div key={order.id} className="card" style={{ borderLeft: "4px solid var(--primary)", padding: "20px", background: "rgba(255,255,255,0.01)" }}>
+                  <div key={order.id} className={`dashboard-order-card ${["Paid", "Assigned", "Picked Up", "En Route"].includes(order.status) ? "pending" : ["Completed", "Reviewed"].includes(order.status) ? "completed" : order.status === "Rejected" || order.status === "Cancelled" ? "cancelled" : ""}`}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--glass-border)", paddingBottom: "12px", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
                       <div>
                         <strong style={{ color: "white" }}>Order ID: {order.id}</strong>
                         <span style={{ fontSize: "0.85rem", color: "var(--gray-600)", marginLeft: "12px" }}>Placed on: {order.date}</span>
                       </div>
-                      <span style={{ 
-                        fontSize: "0.8rem", 
-                        padding: "4px 10px", 
-                        borderRadius: "12px", 
-                        fontWeight: "bold",
-                        backgroundColor: order.status === "Requested" ? "var(--secondary-bg)" : order.status === "Paid" ? "rgba(16, 185, 129, 0.1)" : "rgba(16, 185, 129, 0.2)",
-                        color: order.status === "Requested" ? "var(--secondary)" : "var(--primary)",
-                        border: `1px solid ${order.status === "Requested" ? "var(--secondary)" : "var(--primary)"}`
-                      }}>
+                      <span className={`badge-status ${order.status.toLowerCase().replace(" ", "-")}`}>
                         {order.status}
                       </span>
                     </div>
@@ -516,14 +508,7 @@ export default function FarmerDashboard({ activeUser, onSwitchView }) {
                       <td>{prod.quantity} {prod.unit}s</td>
                       <td>{prod.minOrder} {prod.unit}</td>
                       <td>
-                        <span style={{ 
-                          fontSize: "0.75rem", 
-                          padding: "4px 8px", 
-                          borderRadius: "10px", 
-                          backgroundColor: prod.status === "Available" ? "rgba(16, 185, 129, 0.12)" : "rgba(255, 255, 255, 0.05)",
-                          color: prod.status === "Available" ? "var(--primary)" : "var(--gray-600)",
-                          border: `1px solid ${prod.status === "Available" ? "var(--primary)" : "var(--glass-border)"}`
-                        }}>
+                        <span className={`badge-status ${prod.status.toLowerCase().replace(" ", "-")}`}>
                           {prod.status}
                         </span>
                       </td>
@@ -619,14 +604,7 @@ export default function FarmerDashboard({ activeUser, onSwitchView }) {
                       <td><strong style={{ color: "white" }}>{item.product}</strong></td>
                       <td>{item.month} 2026</td>
                       <td>
-                        <span style={{ 
-                          fontSize: "0.8rem", 
-                          padding: "4px 10px", 
-                          borderRadius: "10px", 
-                          backgroundColor: item.status === "Available" ? "rgba(16, 185, 129, 0.15)" : "var(--secondary-bg)",
-                          color: item.status === "Available" ? "var(--primary)" : "var(--secondary)",
-                          border: `1px solid ${item.status === "Available" ? "var(--primary)" : "var(--secondary)"}`
-                        }}>
+                        <span className={`badge-status ${item.status.toLowerCase().replace(" ", "-")}`}>
                           {item.status}
                         </span>
                       </td>

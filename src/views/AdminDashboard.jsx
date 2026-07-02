@@ -78,21 +78,21 @@ export default function AdminDashboard() {
           <h2>Admin Command Center</h2>
           <p style={{ color: "var(--gray-600)" }}>Manage users, verify farmers, update daily market indices, and audit system actions.</p>
         </div>
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+        <div className="dashboard-tabs">
           <button 
-            className={`btn btn-sm ${activeTab === "verifications" ? "btn-primary" : "btn-outline"}`}
+            className={`tab-pill ${activeTab === "verifications" ? "active" : ""}`}
             onClick={() => setActiveTab("verifications")}
           >
             Farmer Verifications
           </button>
           <button 
-            className={`btn btn-sm ${activeTab === "prices" ? "btn-primary" : "btn-outline"}`}
+            className={`tab-pill ${activeTab === "prices" ? "active" : ""}`}
             onClick={() => setActiveTab("prices")}
           >
             Update Daily Prices
           </button>
           <button 
-            className={`btn btn-sm ${activeTab === "audit" ? "btn-primary" : "btn-outline"}`}
+            className={`tab-pill ${activeTab === "audit" ? "active" : ""}`}
             onClick={() => setActiveTab("audit")}
           >
             Audit Trails ({db.auditLogs.length})
