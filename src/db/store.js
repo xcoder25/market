@@ -27,13 +27,36 @@ export const getDB = () => {
       messages: INITIAL_MESSAGES,
       notifications: INITIAL_NOTIFICATIONS,
       auditLogs: INITIAL_AUDIT_LOGS,
-      currentUser: null, // Start logged out for landing page & real authentication
+      currentUser: null,
       currentRole: null
     };
     saveDB(initialDB);
     return initialDB;
   }
-  return JSON.parse(data);
+  const db = JSON.parse(data);
+  let updated = false;
+
+  // Auto-sync products
+  INITIAL_PRODUCTS.forEach(p => {
+    if (!db.products.some(dp => dp.id === p.id)) {
+      db.products.push(p);
+      updated = true;
+    }
+  });
+
+  // Auto-sync users
+  INITIAL_USERS.forEach(u => {
+    if (!db.users.some(du => du.id === u.id)) {
+      db.users.push(u);
+      updated = true;
+    }
+  });
+
+  if (updated) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+  }
+
+  return db;
 };
 
 export const saveDB = (db) => {
