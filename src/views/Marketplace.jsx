@@ -1937,7 +1937,8 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat, init
                 </div>
               </motion.div>
             </motion.div>
-          )}
+          );
+        })()}
 
         {/* Farmer / Seller Storefront Modal */}
         {selectedFarmer && (() => {
