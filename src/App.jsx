@@ -155,8 +155,20 @@ export default function App() {
         localStorage.setItem("ibom_current_role", freshDb.currentRole);
       }
     };
+
+    const handleAddToast = (e) => {
+      if (e.detail) {
+        addToast(e.detail.title, e.detail.message);
+      }
+    };
+
     window.addEventListener("db_update", handleUpdate);
-    return () => window.removeEventListener("db_update", handleUpdate);
+    window.addEventListener("add_toast", handleAddToast);
+
+    return () => {
+      window.removeEventListener("db_update", handleUpdate);
+      window.removeEventListener("add_toast", handleAddToast);
+    };
   }, []);
 
   const handleAuthSuccess = (user) => {

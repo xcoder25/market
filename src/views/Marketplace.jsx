@@ -3,7 +3,7 @@ import {
   Search, Filter, ShieldCheck, Heart, ShoppingBag, Calendar, Check, Send, 
   AlertCircle, RefreshCw, X, MessageSquare, Star, FileText, CreditCard, 
   Truck, MapPin, Sprout, Fish, Egg, Beef, Droplets, Package, Apple, 
-  CheckCircle2, ChevronRight, Copy, Award, Shield 
+  CheckCircle2, ChevronRight, Copy, Award, Shield, Bell
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
@@ -70,11 +70,40 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
   const [delivRating, setDelivRating] = useState(5);
   const [packRating, setPackRating] = useState(5);
 
+  // Shopping Cart States
+  const [cart, setCart] = useState(() => {
+    const saved = localStorage.getItem("ibom_cart");
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [cartOpen, setCartOpen] = useState(false);
+
+  // Compare States
+  const [compareList, setCompareList] = useState([]);
+  const [compareOpen, setCompareOpen] = useState(false);
+
+  // Price Alerts States
+  const [alerts, setAlerts] = useState(() => {
+    const saved = localStorage.getItem("ibom_price_alerts");
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Hero Carousel State
+  const [heroIndex, setHeroIndex] = useState(0);
+  const [showEscrowInfo, setShowEscrowInfo] = useState(false);
+
   useEffect(() => {
     const handleUpdate = () => setDb(getDB());
     window.addEventListener("db_update", handleUpdate);
     return () => window.removeEventListener("db_update", handleUpdate);
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem("ibom_cart", JSON.stringify(cart));
+  }, [cart]);
+
+  useEffect(() => {
+    localStorage.setItem("ibom_price_alerts", JSON.stringify(alerts));
+  }, [alerts]);
 
   // Listen for AI assistant click links to trigger details or buying modals
   useEffect(() => {
@@ -103,6 +132,147 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
   const refreshState = () => {
     setDb(getDB());
   };
+
+  // Helper handlers
+  const handleAddToCart = (product) => {
+    setCart(prev => {
+      const existingIndex = prev.findIndex(item => item.product.id === product.id);
+      if (existingIndex !== -1) {
+        const updated = [...prev];
+        updated[existingIndex].quantity += 1;
+        return updated;
+      }
+      return [...prev, { product, quantity: product.minOrder || 1 }];
+    });
+
+    window.dispatchEvent(new CustomEvent("add_toast", {
+      detail: {
+        title: "Cart Updated",
+        message: `${product.name} has been added to your shopping cart.`
+      }
+    }));
+  };
+
+  const handleRemoveFromCart = (productId) => {
+    setCart(prev => prev.filter(item => item.product.id !== productId));
+  };
+
+  const handleUpdateCartQty = (productId, qty) => {
+    setCart(prev => prev.map(item => {
+      if (item.product.id === productId) {
+        const minOrder = item.product.minOrder || 1;
+        const validQty = Math.max(minOrder, qty);
+        return { ...item, quantity: validQty };
+      }
+      return item;
+    }));
+  };
+
+  const handleCheckoutCart = () => {
+    if (!activeUser) {
+      onSwitchView("auth");
+      setCartOpen(false);
+      return;
+    }
+
+    if (cart.length === 0) return;
+
+    setActionLoading(true);
+    setLoadingMessage("Creating secure escrow allocations for your items...");
+
+    setTimeout(() => {
+      let finalDb = getDB();
+      
+      // Place orders grouped by farmer
+      cart.forEach(item => {
+        const { db: updatedDb } = placeOrder(item.product.id, item.quantity);
+        finalDb = updatedDb;
+      });
+
+      setDb(finalDb);
+      setCart([]); // Clear cart
+      setCartOpen(false);
+      setActionLoading(false);
+
+      window.dispatchEvent(new Event("db_update"));
+      window.dispatchEvent(new CustomEvent("add_toast", {
+        detail: {
+          title: "Orders Placed Successfully",
+          message: "Your orders have been secured in Escrow! Go to 'My Orders' to make payment."
+        }
+      }));
+
+      // Switch to My Orders tab
+      setActiveTab("my_orders");
+    }, 1500);
+  };
+
+  const toggleCompare = (product) => {
+    setCompareList(prev => {
+      const exists = prev.some(p => p.id === product.id);
+      if (exists) {
+        return prev.filter(p => p.id !== product.id);
+      }
+      if (prev.length >= 3) {
+        window.dispatchEvent(new CustomEvent("add_toast", {
+          detail: {
+            title: "Comparison Limit",
+            message: "You can compare a maximum of 3 products at a time."
+          }
+        }));
+        return prev;
+      }
+      return [...prev, product];
+    });
+  };
+
+  const toggleAlertSubscription = (product) => {
+    setAlerts(prev => {
+      const subscribed = prev.includes(product.id);
+      if (subscribed) {
+        window.dispatchEvent(new CustomEvent("add_toast", {
+          detail: {
+            title: "Unsubscribed",
+            message: `You will no longer receive price alerts for ${product.name}.`
+          }
+        }));
+        return prev.filter(id => id !== product.id);
+      } else {
+        window.dispatchEvent(new CustomEvent("add_toast", {
+          detail: {
+            title: "Subscribed to Price Alerts",
+            message: `We will notify you whenever the price of ${product.name} changes.`
+          }
+        }));
+        return [...prev, product.id];
+      }
+    });
+  };
+
+  const HERO_BANNERS = [
+    {
+      title: "Rainy Season Bulk Discount",
+      subtitle: "Get up to 15% off local Itu White Rice & yellow garri from certified producers.",
+      category: "Crops",
+      color: "linear-gradient(135deg, rgba(6, 32, 16, 0.8) 0%, rgba(12, 60, 32, 0.95) 100%)",
+      actionText: "Browse Crops"
+    },
+    {
+      title: "Oron Seafood Fresh Landing",
+      subtitle: "Dry Smoked Bonga fish and fresh water shrimps straight from Oron ports.",
+      category: "Fish",
+      color: "linear-gradient(135deg, rgba(9, 26, 36, 0.8) 0%, rgba(17, 45, 62, 0.95) 100%)",
+      actionText: "Shop Seafood"
+    },
+    {
+      title: "Secure Escrow Guarantee",
+      subtitle: "Your payments are safely held in escrow until you inspect and approve the produce.",
+      category: "All",
+      color: "linear-gradient(135deg, rgba(27, 22, 4, 0.8) 0%, rgba(53, 44, 10, 0.95) 100%)",
+      actionText: "Learn Escrow Flow",
+      isEscrow: true
+    }
+  ];
 
   const getFarmerDetails = (farmerId) => {
     return db.users.find(u => u.id === farmerId) || {};
@@ -261,35 +431,74 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
 
   return (
     <div className="marketplace-page">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px", flexWrap: "wrap", gap: "16px", borderBottom: "1px solid var(--glass-border)", paddingBottom: "16px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px", flexWrap: "wrap", gap: "16px", borderBottom: "1px solid var(--glass-border)", paddingBottom: "16px", width: "100%" }}>
         <div>
           <h2>Ibom Agro Marketplace</h2>
           <p style={{ color: "var(--gray-600)" }}>Connecting you to verified local farmers across Akwa Ibom State</p>
         </div>
         
-        <div className="marketplace-nav-tabs">
-          {[
-            { id: "listings", label: "Browse Produce", icon: <ShoppingBag size={16} /> },
-            { id: "farmers", label: "Farmers Directory", icon: <ShieldCheck size={16} /> },
-            { id: "harvest_calendar", label: "Harvest Calendar", icon: <Calendar size={16} /> },
-            ...(activeUser ? [{ id: "my_orders", label: `My Orders (${myPendingOrders.length})`, icon: <FileText size={16} /> }] : [])
-          ].map(tab => (
-            <button
-              key={tab.id}
-              className={`marketplace-nav-tab ${activeTab === tab.id ? "active" : ""}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {activeTab === tab.id && (
-                <motion.div
-                  layoutId="activeMarketTab"
-                  className="marketplace-nav-tab-pill"
-                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                />
-              )}
-              {tab.icon}
-              <span>{tab.label}</span>
-            </button>
-          ))}
+        <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
+          <div className="marketplace-nav-tabs">
+            {[
+              { id: "listings", label: "Browse Produce", icon: <ShoppingBag size={16} /> },
+              { id: "farmers", label: "Farmers Directory", icon: <ShieldCheck size={16} /> },
+              { id: "harvest_calendar", label: "Harvest Calendar", icon: <Calendar size={16} /> },
+              ...(activeUser ? [{ id: "my_orders", label: `My Orders (${myPendingOrders.length})`, icon: <FileText size={16} /> }] : [])
+            ].map(tab => (
+              <button
+                key={tab.id}
+                className={`marketplace-nav-tab ${activeTab === tab.id ? "active" : ""}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {activeTab === tab.id && (
+                  <motion.div
+                    layoutId="activeMarketTab"
+                    className="marketplace-nav-tab-pill"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <button 
+            onClick={() => setCartOpen(true)}
+            className="btn btn-outline"
+            style={{
+              borderRadius: "50px",
+              padding: "10px 20px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              position: "relative",
+              height: "44px",
+              fontFamily: "var(--font-display)",
+              fontWeight: "700",
+              fontSize: "0.9rem"
+            }}
+          >
+            <ShoppingBag size={16} />
+            <span>Cart</span>
+            {cart.length > 0 && (
+              <span style={{
+                background: "var(--secondary)",
+                color: "black",
+                fontSize: "0.75rem",
+                fontWeight: "800",
+                borderRadius: "50%",
+                minWidth: "20px",
+                height: "20px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "0 6px"
+              }}>
+                {cart.reduce((sum, item) => sum + item.quantity, 0)}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -315,377 +524,509 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
             </div>
           ))}
         </div>
-      )}
-
-      {activeTab === "listings" && (
-        <div className="marketplace-layout">
-          {/* Filters Sidebar (Mobile Drawer compatible) */}
-          <aside className={`filter-sidebar ${mobileFiltersOpen ? "mobile-open" : ""}`}>
-            <div className="filter-sidebar-header">
-              <h3 style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--white)", fontSize: "1.1rem" }}>
-                <Filter size={18} /> Filters
-              </h3>
+      )}      {activeTab === "listings" && (
+        <div style={{ width: "100%" }}>
+          {/* Hero Carousel Banner */}
+          <div 
+            style={{ 
+              background: HERO_BANNERS[heroIndex].color, 
+              border: "1px solid var(--glass-border)", 
+              borderRadius: "16px", 
+              padding: "24px 32px", 
+              marginBottom: "28px", 
+              position: "relative", 
+              overflow: "hidden",
+              minHeight: "160px",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              transition: "all 0.5s ease"
+            }}
+          >
+            {/* Ambient Background Glow */}
+            <div style={{ position: "absolute", right: "-50px", bottom: "-50px", width: "200px", height: "200px", background: "var(--primary)", filter: "blur(80px)", opacity: 0.15, pointerEvents: "none" }} />
+            
+            <span style={{ color: "var(--primary-light)", fontSize: "0.8rem", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6px", display: "block" }}>Featured Update</span>
+            <h3 style={{ fontSize: "1.5rem", color: "white", fontWeight: "800", marginBottom: "8px", fontFamily: "var(--font-display)", margin: 0 }}>
+              {HERO_BANNERS[heroIndex].title}
+            </h3>
+            <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.92rem", maxWidth: "600px", marginBottom: "16px", marginTop: "4px", lineHeight: "1.45" }}>
+              {HERO_BANNERS[heroIndex].subtitle}
+            </p>
+            
+            <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
               <button 
-                onClick={() => setMobileFiltersOpen(false)}
-                style={{ background: "none", border: "none", color: "var(--primary)", cursor: "pointer" }}
+                className="btn btn-primary btn-sm"
+                onClick={() => {
+                  if (HERO_BANNERS[heroIndex].isEscrow) {
+                    setShowEscrowInfo(true);
+                  } else {
+                    setSelectedCategory(HERO_BANNERS[heroIndex].category);
+                  }
+                }}
               >
-                <X size={20} />
+                {HERO_BANNERS[heroIndex].actionText}
               </button>
-            </div>
-            
-            <div className="filter-group" style={{ marginTop: "12px" }}>
-              <label>Search Products</label>
-              <div style={{ position: "relative" }}>
-                <input 
-                  type="text" 
-                  className="filter-input" 
-                  placeholder="Cassava, Palm oil, Catfish..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  style={{ paddingLeft: "36px" }}
-                />
-                <Search size={16} style={{ position: "absolute", left: "12px", top: "15px", color: "var(--gray-600)" }} />
+              
+              {/* Dot Indicators */}
+              <div style={{ display: "flex", gap: "6px", marginLeft: "auto" }}>
+                {HERO_BANNERS.map((_, idx) => (
+                  <button 
+                    key={idx}
+                    onClick={() => setHeroIndex(idx)}
+                    style={{ 
+                      width: heroIndex === idx ? "24px" : "8px", 
+                      height: "8px", 
+                      borderRadius: "4px", 
+                      background: heroIndex === idx ? "var(--primary)" : "rgba(255,255,255,0.2)", 
+                      border: "none", 
+                      padding: 0,
+                      cursor: "pointer", 
+                      transition: "all 0.3s ease" 
+                    }}
+                    title={`Slide ${idx + 1}`}
+                  />
+                ))}
               </div>
             </div>
+          </div>
 
-            <div className="filter-group">
-              <label>Category</label>
-              <select className="filter-input" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
-                <option value="All">All Categories</option>
-                {Object.keys(CATEGORIES).map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="filter-group">
-              <label>Location (LGA)</label>
-              <select className="filter-input" value={selectedLga} onChange={(e) => setSelectedLga(e.target.value)}>
-                <option value="All">All LGAs</option>
-                {AKWA_IBOM_LOCATIONS.map(loc => (
-                  <option key={loc.lga} value={loc.lga}>{loc.lga}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="filter-group">
-              <label>Farmer Verification</label>
-              <select className="filter-input" value={selectedVerification} onChange={(e) => setSelectedVerification(e.target.value)}>
-                <option value="All">All Verified</option>
-                <option value="Gold">Gold Inspection</option>
-                <option value="Silver">Silver ID Verified</option>
-                <option value="Bronze">Bronze Phone Verified</option>
-              </select>
-            </div>
-
-            <div className="filter-group">
-              <label>Cultivation Type</label>
-              <select className="filter-input" value={organicFilter} onChange={(e) => setOrganicFilter(e.target.value)}>
-                <option value="All">All Produce</option>
-                <option value="Organic">Organic Only</option>
-                <option value="Non-Organic">Conventional</option>
-              </select>
-            </div>
-
-            <div className="filter-group">
-              <label>Sort By</label>
-              <select className="filter-input" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                <option value="Recently Added">Recently Added</option>
-                <option value="Lowest Price">Lowest Price</option>
-                <option value="Highest Rating">Highest Rating</option>
-              </select>
-            </div>
-            
-            <button 
-              className="btn btn-outline btn-sm" 
-              style={{ width: "100%", marginTop: "10px" }}
-              onClick={() => {
-                setSearch("");
-                setSelectedCategory("All");
-                setSelectedLga("All");
-                setSelectedVerification("All");
-                setOrganicFilter("All");
-                setSortBy("Recently Added");
-                setMobileFiltersOpen(false);
-              }}
-            >
-              Reset Filters
-            </button>
-          </aside>
-
-          {/* Product Grid Area */}
-          <main style={{ width: "100%", minWidth: 0 }}>
-            {/* Horizontal Category Pills Row */}
-            <div className="category-pills-row">
-              <button
-                className={`category-pill ${selectedCategory === "All" ? "active" : ""}`}
-                onClick={() => setSelectedCategory("All")}
-              >
-                <span className="category-pill-icon"><ShoppingBag size={14} /></span>
-                <span>All Products</span>
-              </button>
-              {Object.keys(CATEGORIES).map(cat => (
-                <button
-                  key={cat}
-                  className={`category-pill ${selectedCategory === cat ? "active" : ""}`}
-                  onClick={() => setSelectedCategory(cat)}
+          <div className="marketplace-layout">
+            {/* Filters Sidebar */}
+            <aside className={`filter-sidebar ${mobileFiltersOpen ? "mobile-open" : ""}`}>
+              <div className="filter-sidebar-header">
+                <h3 style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--white)", fontSize: "1.1rem" }}>
+                  <Filter size={18} /> Filters
+                </h3>
+                <button 
+                  onClick={() => setMobileFiltersOpen(false)}
+                  style={{ background: "none", border: "none", color: "var(--primary)", cursor: "pointer" }}
                 >
-                  <span className="category-pill-icon">{CATEGORY_ICONS[cat] || <ShoppingBag size={14} />}</span>
-                  <span>{cat}</span>
+                  <X size={20} />
                 </button>
-              ))}
-            </div>
-
-            {/* Collapsible LGA Radar Map Filter */}
-            <div className="card radar-map-card" style={{ marginBottom: "24px", padding: "16px 20px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setMapVisible(!mapVisible)}>
-                <span style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", color: "white", fontSize: "0.9rem" }}>
-                  <MapPin size={16} style={{ color: "var(--primary)" }} /> Filter by Akwa Ibom LGA Radar Map
-                </span>
-                <span style={{ color: "var(--primary)", fontSize: "0.8rem", fontWeight: "bold" }}>
-                  {mapVisible ? "Hide Radar Map" : "Show Radar Map"}
-                </span>
+              </div>
+              
+              <div className="filter-group" style={{ marginTop: "12px" }}>
+                <label>Search Products</label>
+                <div style={{ position: "relative" }}>
+                  <input 
+                    type="text" 
+                    className="filter-input" 
+                    placeholder="Cassava, Palm oil, Catfish..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    style={{ paddingLeft: "36px" }}
+                  />
+                  <Search size={16} style={{ position: "absolute", left: "12px", top: "15px", color: "var(--gray-600)" }} />
+                </div>
               </div>
 
-              <AnimatePresence>
-                {mapVisible && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    style={{ marginTop: "14px", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center" }}
+              <div className="filter-group">
+                <label>Category</label>
+                <select className="filter-input" value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+                  <option value="All">All Categories</option>
+                  {Object.keys(CATEGORIES).map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <label>Location (LGA)</label>
+                <select className="filter-input" value={selectedLga} onChange={(e) => setSelectedLga(e.target.value)}>
+                  <option value="All">All LGAs</option>
+                  {AKWA_IBOM_LOCATIONS.map(loc => (
+                    <option key={loc.lga} value={loc.lga}>{loc.lga}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <label>Farmer Verification</label>
+                <select className="filter-input" value={selectedVerification} onChange={(e) => setSelectedVerification(e.target.value)}>
+                  <option value="All">All Verified</option>
+                  <option value="Gold">Gold Inspection</option>
+                  <option value="Silver">Silver ID Verified</option>
+                  <option value="Bronze">Bronze Phone Verified</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <label>Cultivation Type</label>
+                <select className="filter-input" value={organicFilter} onChange={(e) => setOrganicFilter(e.target.value)}>
+                  <option value="All">All Produce</option>
+                  <option value="Organic">Organic Only</option>
+                  <option value="Non-Organic">Conventional</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <label>Sort By</label>
+                <select className="filter-input" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                  <option value="Recently Added">Recently Added</option>
+                  <option value="Lowest Price">Lowest Price</option>
+                  <option value="Highest Rating">Highest Rating</option>
+                </select>
+              </div>
+              
+              <button 
+                className="btn btn-outline btn-sm" 
+                style={{ width: "100%", marginTop: "10px" }}
+                onClick={() => {
+                  setSearch("");
+                  setSelectedCategory("All");
+                  setSelectedLga("All");
+                  setSelectedVerification("All");
+                  setOrganicFilter("All");
+                  setSortBy("Recently Added");
+                  setMobileFiltersOpen(false);
+                }}
+              >
+                Reset Filters
+              </button>
+            </aside>
+
+            {/* Product Grid Area */}
+            <main style={{ width: "100%", minWidth: 0 }}>
+              {/* Horizontal Category Pills Row */}
+              <div className="category-pills-row">
+                <button
+                  className={`category-pill ${selectedCategory === "All" ? "active" : ""}`}
+                  onClick={() => setSelectedCategory("All")}
+                >
+                  <span className="category-pill-icon"><ShoppingBag size={14} /></span>
+                  <span>All Products</span>
+                </button>
+                {Object.keys(CATEGORIES).map(cat => (
+                  <button
+                    key={cat}
+                    className={`category-pill ${selectedCategory === cat ? "active" : ""}`}
+                    onClick={() => setSelectedCategory(cat)}
                   >
-                    <div style={{ width: "100%", maxWidth: "340px", padding: "8px", background: "rgba(0,0,0,0.3)", borderRadius: "12px", border: "1px solid var(--glass-border)", position: "relative" }}>
-                      <svg viewBox="0 0 400 300" width="100%" height="auto" className="lga-map-svg">
-                        <defs>
-                          <radialGradient id="radarGlow" cx="50%" cy="50%" r="50%">
-                            <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.2" />
-                            <stop offset="100%" stopColor="transparent" stopOpacity="0" />
-                          </radialGradient>
-                          <linearGradient id="radarSweepGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.4" />
-                            <stop offset="100%" stopColor="transparent" stopOpacity="0" />
-                          </linearGradient>
-                        </defs>
+                    <span className="category-pill-icon">{CATEGORY_ICONS[cat] || <ShoppingBag size={14} />}</span>
+                    <span>{cat}</span>
+                  </button>
+                ))}
+              </div>
 
-                        {/* Radar Background Glow */}
-                        <circle cx="200" cy="130" r="120" fill="url(#radarGlow)" />
+              {/* Collapsible LGA Radar Map Filter */}
+              <div className="card radar-map-card" style={{ marginBottom: "24px", padding: "16px 20px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setMapVisible(!mapVisible)}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", color: "white", fontSize: "0.9rem" }}>
+                    <MapPin size={16} style={{ color: "var(--primary)" }} /> Filter by Akwa Ibom LGA Radar Map
+                  </span>
+                  <span style={{ color: "var(--primary)", fontSize: "0.8rem", fontWeight: "bold" }}>
+                    {mapVisible ? "Hide Radar Map" : "Show Radar Map"}
+                  </span>
+                </div>
 
-                        {/* Concentric Radar Rings */}
-                        <circle cx="200" cy="130" r="40" className="lga-radar-ring" strokeDasharray="3,6" />
-                        <circle cx="200" cy="130" r="80" className="lga-radar-ring" strokeDasharray="4,8" />
-                        <circle cx="200" cy="130" r="120" className="lga-radar-ring" />
-                        <circle cx="200" cy="130" r="160" className="lga-radar-ring" strokeDasharray="5,10" />
+                <AnimatePresence>
+                  {mapVisible && (
+                    <motion.div 
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      style={{ marginTop: "14px", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center" }}
+                    >
+                      <div style={{ width: "100%", maxWidth: "340px", padding: "8px", background: "rgba(0,0,0,0.3)", borderRadius: "12px", border: "1px solid var(--glass-border)", position: "relative" }}>
+                        <svg viewBox="0 0 400 300" width="100%" height="auto" className="lga-map-svg">
+                          <defs>
+                            <radialGradient id="radarGlow" cx="50%" cy="50%" r="50%">
+                              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.2" />
+                              <stop offset="100%" stopColor="transparent" stopOpacity="0" />
+                            </radialGradient>
+                            <linearGradient id="radarSweepGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.4" />
+                              <stop offset="100%" stopColor="transparent" stopOpacity="0" />
+                            </linearGradient>
+                          </defs>
 
-                        {/* Radar Grid Crosshairs */}
-                        <line x1="40" y1="130" x2="360" y2="130" className="lga-radar-grid" strokeDasharray="4,4" />
-                        <line x1="200" y1="10" x2="200" y2="250" className="lga-radar-grid" strokeDasharray="4,4" />
+                          {/* Radar Background Glow */}
+                          <circle cx="200" cy="130" r="120" fill="url(#radarGlow)" />
 
-                        {/* Rotating Radar Sweep Line */}
-                        <line x1="200" y1="130" x2="200" y2="10" className="lga-radar-sweep" />
+                          {/* Concentric Radar Rings */}
+                          <circle cx="200" cy="130" r="40" className="lga-radar-ring" strokeDasharray="3,6" />
+                          <circle cx="200" cy="130" r="80" className="lga-radar-ring" strokeDasharray="4,8" />
+                          <circle cx="200" cy="130" r="120" className="lga-radar-ring" />
+                          <circle cx="200" cy="130" r="160" className="lga-radar-ring" strokeDasharray="5,10" />
 
-                        {/* Connections from center (Uyo) */}
-                        {[
-                          { name: "Ini", x: 200, y: 35 },
-                          { name: "Ikot Ekpene", x: 110, y: 80 },
-                          { name: "Itu", x: 210, y: 85 },
-                          { name: "Abak", x: 110, y: 140 },
-                          { name: "Mkpat Enin", x: 100, y: 210 },
-                          { name: "Eket", x: 200, y: 230 },
-                          { name: "Oron", x: 290, y: 190 }
-                        ].map((l, idx) => (
-                          <line
-                            key={idx}
-                            x1={l.x}
-                            y1={l.y}
-                            x2={200}
-                            y2={130}
-                            stroke={selectedLga === l.name ? "var(--primary-light)" : "rgba(16, 185, 129, 0.15)"}
-                            strokeWidth={selectedLga === l.name ? 1.5 : 1}
-                            strokeDasharray="4,4"
-                          />
-                        ))}
+                          {/* Radar Grid Crosshairs */}
+                          <line x1="40" y1="130" x2="360" y2="130" className="lga-radar-grid" strokeDasharray="4,4" />
+                          <line x1="200" y1="10" x2="200" y2="250" className="lga-radar-grid" strokeDasharray="4,4" />
 
-                        {/* LGA Nodes */}
-                        {[
-                          { name: "Ini", color: "#10b981", x: 200, y: 35 },
-                          { name: "Ikot Ekpene", color: "#f59e0b", x: 110, y: 80 },
-                          { name: "Itu", color: "#10b981", x: 210, y: 85 },
-                          { name: "Uyo", color: "#0ea5e9", x: 200, y: 130 },
-                          { name: "Abak", color: "#f59e0b", x: 110, y: 140 },
-                          { name: "Mkpat Enin", color: "#10b981", x: 100, y: 210 },
-                          { name: "Eket", color: "#0ea5e9", x: 200, y: 230 },
-                          { name: "Oron", color: "#f59e0b", x: 290, y: 190 }
-                        ].map((item) => {
-                          const isSelected = selectedLga === item.name;
-                          return (
-                            <g
-                              key={item.name}
-                              style={{ cursor: "pointer" }}
-                              onClick={() => {
-                                setSelectedLga(selectedLga === item.name ? "All" : item.name);
-                              }}
-                            >
-                              {/* Pulsing ring under selected marker */}
-                              {isSelected && (
+                          {/* Rotating Radar Sweep Line */}
+                          <line x1="200" y1="130" x2="200" y2="10" className="lga-radar-sweep" />
+
+                          {/* Connections from center (Uyo) */}
+                          {[
+                            { name: "Ini", x: 200, y: 35 },
+                            { name: "Ikot Ekpene", x: 110, y: 80 },
+                            { name: "Itu", x: 210, y: 85 },
+                            { name: "Abak", x: 110, y: 140 },
+                            { name: "Mkpat Enin", x: 100, y: 210 },
+                            { name: "Eket", x: 200, y: 230 },
+                            { name: "Oron", x: 290, y: 190 }
+                          ].map((l, idx) => (
+                            <line
+                              key={idx}
+                              x1={l.x}
+                              y1={l.y}
+                              x2={200}
+                              y2={130}
+                              stroke={selectedLga === l.name ? "var(--primary-light)" : "rgba(16, 185, 129, 0.15)"}
+                              strokeWidth={selectedLga === l.name ? 1.5 : 1}
+                              strokeDasharray="4,4"
+                            />
+                          ))}
+
+                          {/* LGA Nodes */}
+                          {[
+                            { name: "Ini", color: "#10b981", x: 200, y: 35 },
+                            { name: "Ikot Ekpene", color: "#f59e0b", x: 110, y: 80 },
+                            { name: "Itu", color: "#10b981", x: 210, y: 85 },
+                            { name: "Uyo", color: "#0ea5e9", x: 200, y: 130 },
+                            { name: "Abak", color: "#f59e0b", x: 110, y: 140 },
+                            { name: "Mkpat Enin", color: "#10b981", x: 100, y: 210 },
+                            { name: "Eket", color: "#0ea5e9", x: 200, y: 230 },
+                            { name: "Oron", color: "#f59e0b", x: 290, y: 190 }
+                          ].map((item) => {
+                            const isSelected = selectedLga === item.name;
+                            return (
+                              <g
+                                key={item.name}
+                                style={{ cursor: "pointer" }}
+                                onClick={() => {
+                                  setSelectedLga(selectedLga === item.name ? "All" : item.name);
+                                }}
+                              >
+                                {/* Pulsing ring under selected marker */}
+                                {isSelected && (
+                                  <circle
+                                    cx={item.x}
+                                    cy={item.y}
+                                    r={18}
+                                    fill="none"
+                                    stroke="var(--primary)"
+                                    className="lga-marker-pulse"
+                                  />
+                                )}
+                                {/* Main Circle Marker */}
                                 <circle
                                   cx={item.x}
                                   cy={item.y}
-                                  r={18}
-                                  fill="none"
-                                  stroke="var(--primary)"
-                                  className="lga-marker-pulse"
+                                  r={isSelected ? 10 : 7}
+                                  fill={isSelected ? "var(--primary)" : "rgba(10, 22, 15, 0.9)"}
+                                  stroke={isSelected ? "#fff" : item.color}
+                                  strokeWidth="2"
+                                  style={{ transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)" }}
                                 />
-                              )}
-                              {/* Main Circle Marker */}
-                              <circle
-                                cx={item.x}
-                                cy={item.y}
-                                r={isSelected ? 10 : 7}
-                                fill={isSelected ? "var(--primary)" : "rgba(10, 22, 15, 0.9)"}
-                                stroke={isSelected ? "#fff" : item.color}
-                                strokeWidth="2"
-                                style={{ transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)" }}
-                              />
-                              <text
-                                x={item.x}
-                                y={item.y - 12}
-                                textAnchor="middle"
-                                fill={isSelected ? "#fff" : "var(--gray-600)"}
-                                fontSize="9"
-                                fontWeight={isSelected ? "800" : "600"}
-                                style={{
-                                  textShadow: isSelected ? "0 0 8px rgba(16, 185, 129, 0.6)" : "none",
-                                  transition: "all 0.3s"
+                                <text
+                                  x={item.x}
+                                  y={item.y - 12}
+                                  textAnchor="middle"
+                                  fill={isSelected ? "#fff" : "var(--gray-600)"}
+                                  fontSize="9"
+                                  fontWeight={isSelected ? "800" : "600"}
+                                  style={{
+                                    textShadow: isSelected ? "0 0 8px rgba(16, 185, 129, 0.6)" : "none",
+                                    transition: "all 0.3s"
+                                  }}
+                                >
+                                  {item.name}
+                                </text>
+                              </g>
+                            );
+                          })}
+                        </svg>
+                      </div>
+                      {selectedLga !== "All" && (
+                        <button 
+                          className="btn btn-outline btn-sm" 
+                          style={{ marginTop: "12px", padding: "4px 12px" }}
+                          onClick={() => setSelectedLga("All")}
+                        >
+                          Reset Map Filter
+                        </button>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                <span style={{ fontSize: "0.9rem", color: "var(--gray-600)" }}>
+                  Showing <strong>{sortedProducts.length}</strong> available products
+                </span>
+                <button onClick={refreshState} className="icon-badge-btn" title="Refresh Listings">
+                  <RefreshCw size={16} />
+                </button>
+              </div>
+
+              {sortedProducts.length === 0 ? (
+                <div className="card" style={{ textAlign: "center", padding: "40px 20px" }}>
+                  <AlertCircle size={48} style={{ color: "var(--gray-600)", marginBottom: "12px" }} />
+                  <h3>No Products Found</h3>
+                  <p style={{ color: "var(--gray-600)", marginTop: "4px" }}>Try broadening your search or resetting filters.</p>
+                </div>
+              ) : (
+                <motion.div 
+                  variants={staggerContainer}
+                  initial="hidden"
+                  animate="show"
+                  className="product-grid horizontal-scrollable"
+                >
+                  {sortedProducts.map(product => {
+                    const farmer = getFarmerDetails(product.farmerId);
+                    
+                    // Calculate dynamic badges
+                    let badge = null;
+                    if (product.quantity < 10) {
+                      badge = <span className="product-card-badge last-units">Low Stock ({product.quantity})</span>;
+                    } else if (product.organic) {
+                      badge = <span className="product-card-badge fresh">Organic Fresh</span>;
+                    } else {
+                      badge = <span className="product-card-badge limited">Direct Farm</span>;
+                    }
+
+                    return (
+                      <motion.div 
+                        key={product.id} 
+                        variants={cardFadeIn}
+                        className="product-card"
+                        whileHover={{ y: -6, transition: { duration: 0.2 } }}
+                      >
+                        <div className="product-img-wrapper">
+                          <img src={product.image} alt={product.name} className="product-img" />
+                          {badge}
+                          
+                          {/* Quick Action Overlay Buttons */}
+                          <div style={{ position: "absolute", top: "12px", right: "12px", display: "flex", gap: "6px", zIndex: 10 }}>
+                            {/* Alert Bell */}
+                            <button 
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleAlertSubscription(product);
+                              }}
+                              style={{
+                                background: alerts.includes(product.id) ? "var(--secondary)" : "rgba(5, 10, 7, 0.6)",
+                                border: "1px solid rgba(255,255,255,0.08)",
+                                borderRadius: "50%",
+                                width: "28px",
+                                height: "28px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                cursor: "pointer",
+                                color: alerts.includes(product.id) ? "black" : "white",
+                                backdropFilter: "blur(4px)",
+                                transition: "all 0.2s"
+                              }}
+                              title={alerts.includes(product.id) ? "Unsubscribe from price alerts" : "Subscribe to price alerts"}
+                            >
+                              <Bell size={12} fill={alerts.includes(product.id) ? "black" : "none"} />
+                            </button>
+
+                            {/* Compare Toggle */}
+                            <button 
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleCompare(product);
+                              }}
+                              style={{
+                                background: compareList.some(p => p.id === product.id) ? "var(--primary)" : "rgba(5, 10, 7, 0.6)",
+                                border: "1px solid rgba(255,255,255,0.08)",
+                                borderRadius: "50%",
+                                width: "28px",
+                                height: "28px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                cursor: "pointer",
+                                color: compareList.some(p => p.id === product.id) ? "black" : "white",
+                                backdropFilter: "blur(4px)",
+                                transition: "all 0.2s"
+                              }}
+                              title="Compare this product"
+                            >
+                              <RefreshCw size={12} className={compareList.some(p => p.id === product.id) ? "rotate-animation" : ""} />
+                            </button>
+                          </div>
+
+                          <div className="product-farmer-badge">
+                            <img 
+                              src={farmer.avatar} 
+                              alt={farmer.name} 
+                              className="avatar-small" 
+                              style={{ border: "2px solid var(--white)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)", cursor: "pointer" }} 
+                              onClick={() => setSelectedFarmer(farmer)}
+                              title={`View profile of ${farmer.name}`}
+                            />
+                          </div>
+                        </div>
+                        
+                        <div className="product-details">
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                            <span className="product-cat">{product.category}</span>
+                            <span style={{ fontSize: "0.8rem", color: "var(--primary)", fontWeight: "600" }}>📍 {product.lga}</span>
+                          </div>
+                          <h4 className="product-name">{product.name}</h4>
+                          
+                          <div className="product-meta">
+                            <span style={{ cursor: "pointer" }} onClick={() => setSelectedFarmer(farmer)}>
+                              Farmer: <strong style={{ color: "white" }}>{farmer.name}</strong>
+                            </span>
+                            <span className="product-rating-compact" style={{ cursor: "pointer" }} onClick={() => setSelectedFarmer(farmer)}>
+                              <Star size={12} fill="currentColor" /> {farmer.rating || "5.0"} ({farmer.reviewsCount || 0})
+                            </span>
+                          </div>
+
+                          <p style={{ fontSize: "0.82rem", color: "var(--gray-600)", marginBottom: "16px", flex: 1, lineHeight: 1.45 }}>
+                            {product.description.length > 80 ? product.description.substring(0, 85) + "..." : product.description}
+                          </p>
+
+                          <div className="product-price-row">
+                            <div className="product-price">
+                              ₦{product.price.toLocaleString()} <span style={{ fontSize: "0.8rem", color: "var(--gray-600)" }}>/ {product.unit}</span>
+                            </div>
+                            
+                            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                              <button 
+                                type="button"
+                                className="btn btn-outline btn-sm"
+                                style={{ padding: "8px", borderRadius: "50%", minWidth: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center" }}
+                                onClick={() => handleAddToCart(product)}
+                                title="Add to Cart"
+                              >
+                                <ShoppingBag size={14} />
+                              </button>
+                              <button 
+                                className="btn btn-primary btn-sm"
+                                style={{ padding: "8px 16px", borderRadius: "20px", fontWeight: "800" }}
+                                onClick={() => {
+                                  if (!activeUser) {
+                                    onSwitchView("auth");
+                                    return;
+                                  }
+                                  setSelectedProduct(product);
+                                  setOrderQty(product.minOrder);
                                 }}
                               >
-                                {item.name}
-                              </text>
-                            </g>
-                          );
-                        })}
-                      </svg>
-                    </div>
-                    {selectedLga !== "All" && (
-                      <button 
-                        className="btn btn-outline btn-sm" 
-                        style={{ marginTop: "12px", padding: "4px 12px" }}
-                        onClick={() => setSelectedLga("All")}
-                      >
-                        Reset Map Filter
-                      </button>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <span style={{ fontSize: "0.9rem", color: "var(--gray-600)" }}>
-                Showing <strong>{sortedProducts.length}</strong> available products
-              </span>
-              <button onClick={refreshState} className="icon-badge-btn" title="Refresh Listings">
-                <RefreshCw size={16} />
-              </button>
-            </div>
-
-            {sortedProducts.length === 0 ? (
-              <div className="card" style={{ textAlign: "center", padding: "40px 20px" }}>
-                <AlertCircle size={48} style={{ color: "var(--gray-600)", marginBottom: "12px" }} />
-                <h3>No Products Found</h3>
-                <p style={{ color: "var(--gray-600)", marginTop: "4px" }}>Try broadening your search or resetting filters.</p>
-              </div>
-            ) : (
-              <motion.div 
-                variants={staggerContainer}
-                initial="hidden"
-                animate="show"
-                className="product-grid horizontal-scrollable"
-              >
-                {sortedProducts.map(product => {
-                  const farmer = getFarmerDetails(product.farmerId);
-                  
-                  // Calculate dynamic badges
-                  let badge = null;
-                  if (product.quantity < 10) {
-                    badge = <span className="product-card-badge last-units">Low Stock ({product.quantity})</span>;
-                  } else if (product.organic) {
-                    badge = <span className="product-card-badge fresh">Organic Fresh</span>;
-                  } else {
-                    badge = <span className="product-card-badge limited">Direct Farm</span>;
-                  }
-
-                  return (
-                    <motion.div 
-                      key={product.id} 
-                      variants={cardFadeIn}
-                      className="product-card"
-                      whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                    >
-                      <div className="product-img-wrapper">
-                        <img src={product.image} alt={product.name} className="product-img" />
-                        {badge}
-                        <div className="product-farmer-badge">
-                          <img 
-                            src={farmer.avatar} 
-                            alt={farmer.name} 
-                            className="avatar-small" 
-                            style={{ border: "2px solid var(--white)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)", cursor: "pointer" }} 
-                            onClick={() => setSelectedFarmer(farmer)}
-                            title={`View profile of ${farmer.name}`}
-                          />
-                        </div>
-                      </div>
-                      
-                      <div className="product-details">
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                          <span className="product-cat">{product.category}</span>
-                          <span style={{ fontSize: "0.8rem", color: "var(--primary)", fontWeight: "600" }}>📍 {product.lga}</span>
-                        </div>
-                        <h4 className="product-name">{product.name}</h4>
-                        
-                        <div className="product-meta">
-                          <span style={{ cursor: "pointer" }} onClick={() => setSelectedFarmer(farmer)}>
-                            Farmer: <strong style={{ color: "white" }}>{farmer.name}</strong>
-                          </span>
-                          <span className="product-rating-compact" style={{ cursor: "pointer" }} onClick={() => setSelectedFarmer(farmer)}>
-                            <Star size={12} fill="currentColor" /> {farmer.rating || "5.0"} ({farmer.reviewsCount || 0})
-                          </span>
-                        </div>
-
-                        <p style={{ fontSize: "0.82rem", color: "var(--gray-600)", marginBottom: "16px", flex: 1, lineHeight: 1.45 }}>
-                          {product.description.length > 80 ? product.description.substring(0, 85) + "..." : product.description}
-                        </p>
-
-                        <div className="product-price-row">
-                          <div className="product-price">
-                            ₦{product.price.toLocaleString()} <span style={{ fontSize: "0.8rem", color: "var(--gray-600)" }}>/ {product.unit}</span>
+                                Buy
+                              </button>
+                            </div>
                           </div>
-                          <button 
-                            className="btn btn-primary btn-sm"
-                            style={{ padding: "8px 16px", borderRadius: "20px", fontWeight: "800" }}
-                            onClick={() => {
-                              if (!activeUser) {
-                                onSwitchView("auth");
-                                return;
-                              }
-                              setSelectedProduct(product);
-                              setOrderQty(product.minOrder);
-                            }}
-                          >
-                            Buy Now
-                          </button>
                         </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </motion.div>
-            )}
-          </main>
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </main>
+          </div>
         </div>
       )}
-
       {activeTab === "farmers" && (
         <div>
           <h3 style={{ marginBottom: "16px" }}>Farmers Directory</h3>
@@ -1635,6 +1976,252 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
               </form>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Shopping Cart Drawer */}
+      <AnimatePresence>
+        {cartOpen && (
+          <div className="cart-drawer-backdrop" onClick={() => setCartOpen(false)}>
+            <motion.div 
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="cart-drawer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="cart-drawer-header">
+                <h3>Shopping Cart ({cart.length})</h3>
+                <button onClick={() => setCartOpen(false)}><X size={20} /></button>
+              </div>
+              
+              <div className="cart-drawer-body">
+                {cart.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--gray-600)" }}>
+                    <ShoppingBag size={48} style={{ marginBottom: "16px", opacity: 0.5, margin: "0 auto 16px auto" }} />
+                    <p>Your cart is empty.</p>
+                    <button className="btn btn-primary btn-sm" style={{ marginTop: "16px" }} onClick={() => setCartOpen(false)}>Shop Now</button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                    {cart.map(item => (
+                      <div key={item.product.id} className="cart-item-card">
+                        <img src={item.product.image} alt={item.product.name} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <h4>{item.product.name}</h4>
+                          <span style={{ fontSize: "0.75rem", color: "var(--primary-light)" }}>
+                            By {getFarmerDetails(item.product.farmerId).name || "Farmer"}
+                          </span>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "8px" }}>
+                            <span style={{ fontWeight: "bold", color: "var(--secondary-light)" }}>
+                              ₦{(item.product.price * item.quantity).toLocaleString()}
+                            </span>
+                            
+                            {/* Qty Controls */}
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "rgba(255,255,255,0.03)", border: "1px solid var(--glass-border)", borderRadius: "4px", padding: "2px 6px" }}>
+                              <button 
+                                onClick={() => handleUpdateCartQty(item.product.id, item.quantity - 1)}
+                                style={{ background: "none", border: "none", color: "white", cursor: "pointer", fontSize: "1rem", width: "16px" }}
+                              >-</button>
+                              <span style={{ fontSize: "0.85rem", fontWeight: "bold", minWidth: "16px", textAlign: "center" }}>{item.quantity}</span>
+                              <button 
+                                onClick={() => handleUpdateCartQty(item.product.id, item.quantity + 1)}
+                                style={{ background: "none", border: "none", color: "white", cursor: "pointer", fontSize: "1rem", width: "16px" }}
+                              >+</button>
+                            </div>
+                          </div>
+                        </div>
+                        <button className="cart-item-remove" onClick={() => handleRemoveFromCart(item.product.id)}>
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              
+              {cart.length > 0 && (
+                <div className="cart-drawer-footer">
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px" }}>
+                    <span>Subtotal</span>
+                    <strong style={{ fontSize: "1.2rem", color: "white" }}>
+                      ₦{cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0).toLocaleString()}
+                    </strong>
+                  </div>
+                  <button className="btn btn-primary" style={{ width: "100%", padding: "12px" }} onClick={handleCheckoutCart}>
+                    Secure Escrow Checkout
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating Compare Tray */}
+      {compareList.length > 0 && (
+        <div className="compare-tray">
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <span>Comparing <strong>{compareList.length}/3</strong> items</span>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              {compareList.map(p => (
+                <span key={p.id} style={{ background: "rgba(255,255,255,0.06)", border: "1px solid var(--glass-border)", padding: "4px 10px", borderRadius: "10px", fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "6px", color: "white" }}>
+                  {p.name.substring(0, 15)}...
+                  <X size={12} style={{ cursor: "pointer", color: "var(--danger)" }} onClick={() => toggleCompare(p)} />
+                </span>
+              ))}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: "10px", marginLeft: "auto" }}>
+            <button className="btn btn-outline btn-sm" onClick={() => setCompareList([])}>Clear All</button>
+            <button className="btn btn-primary btn-sm" onClick={() => setCompareOpen(true)}>Compare Now</button>
+          </div>
+        </div>
+      )}
+
+      {/* Compare Details Modal */}
+      <AnimatePresence>
+        {compareOpen && (
+          <div className="modal-overlay" onClick={() => setCompareOpen(false)}>
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="modal-card card"
+              style={{ maxWidth: "800px", width: "90%", background: "rgba(10, 22, 15, 0.95)", border: "1px solid var(--glass-border)", padding: "28px" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                <h3>Product Comparison</h3>
+                <button onClick={() => setCompareOpen(false)} style={{ background: "none", border: "none", color: "var(--primary)", cursor: "pointer" }}><X size={20} /></button>
+              </div>
+              
+              <div style={{ overflowX: "auto" }}>
+                <table className="prices-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: "25%", textAlign: "left", padding: "10px" }}>Feature</th>
+                      {compareList.map(p => (
+                        <th key={p.id} style={{ width: "25%", textAlign: "center", padding: "10px" }}>{p.name}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: "10px", borderBottom: "1px solid var(--glass-border)" }}><strong>Image</strong></td>
+                      {compareList.map(p => (
+                        <td key={p.id} style={{ textAlign: "center", padding: "10px", borderBottom: "1px solid var(--glass-border)" }}>
+                          <img src={p.image} alt={p.name} style={{ width: "80px", height: "60px", borderRadius: "6px", objectFit: "cover", margin: "0 auto" }} />
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "10px", borderBottom: "1px solid var(--glass-border)" }}><strong>Price</strong></td>
+                      {compareList.map(p => (
+                        <td key={p.id} style={{ textAlign: "center", padding: "10px", borderBottom: "1px solid var(--glass-border)", color: "var(--secondary-light)", fontWeight: "bold" }}>
+                          ₦{p.price.toLocaleString()} / {p.unit}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "10px", borderBottom: "1px solid var(--glass-border)" }}><strong>Cultivation</strong></td>
+                      {compareList.map(p => (
+                        <td key={p.id} style={{ textAlign: "center", padding: "10px", borderBottom: "1px solid var(--glass-border)", color: "white" }}>
+                          {p.organic ? "🌿 Organic" : "Conventional"}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "10px", borderBottom: "1px solid var(--glass-border)" }}><strong>Farmer</strong></td>
+                      {compareList.map(p => {
+                        const f = getFarmerDetails(p.farmerId);
+                        return (
+                          <td key={p.id} style={{ textAlign: "center", padding: "10px", borderBottom: "1px solid var(--glass-border)", color: "white" }}>
+                            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
+                              <span>{f.name}</span>
+                              <span style={{ fontSize: "0.75rem", color: "var(--primary-light)" }}>★ {f.rating}</span>
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "10px", borderBottom: "1px solid var(--glass-border)" }}><strong>Location</strong></td>
+                      {compareList.map(p => (
+                        <td key={p.id} style={{ textAlign: "center", padding: "10px", borderBottom: "1px solid var(--glass-border)", color: "white" }}>
+                          📍 {p.town}, {p.lga}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "10px", borderBottom: "1px solid var(--glass-border)" }}><strong>Min Order</strong></td>
+                      {compareList.map(p => (
+                        <td key={p.id} style={{ textAlign: "center", padding: "10px", borderBottom: "1px solid var(--glass-border)", color: "white" }}>
+                          {p.minOrder} {p.unit}
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "10px", borderBottom: "1px solid var(--glass-border)" }}><strong>Delivery</strong></td>
+                      {compareList.map(p => (
+                        <td key={p.id} style={{ textAlign: "center", padding: "10px", borderBottom: "1px solid var(--glass-border)", color: "white" }}>
+                          {p.deliveryAvailable ? "🚚 Available" : "Pick Up Only"}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Escrow Explainer Modal */}
+      <AnimatePresence>
+        {showEscrowInfo && (
+          <div className="modal-overlay" onClick={() => setShowEscrowInfo(false)}>
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="modal-card card"
+              style={{ maxWidth: "500px", width: "90%", background: "rgba(10, 22, 15, 0.95)", border: "1px solid var(--glass-border)", padding: "28px", textAlign: "center" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <button onClick={() => setShowEscrowInfo(false)} style={{ background: "none", border: "none", color: "var(--primary)", cursor: "pointer" }}><X size={20} /></button>
+              </div>
+              
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", marginTop: "-10px" }}>
+                <div style={{ background: "rgba(245,158,11,0.1)", border: "1px solid var(--warning)", padding: "16px", borderRadius: "50%" }}>
+                  <ShieldCheck size={48} style={{ color: "var(--warning)" }} />
+                </div>
+                <h3 style={{ fontSize: "1.4rem", color: "white", fontWeight: "bold" }}>Ibom Secure Escrow Flow</h3>
+                <p style={{ color: "var(--gray-600)", fontSize: "0.9rem", lineHeight: 1.6 }}>
+                  To protect both buyers and local farmers, we route all payments through our secure Escrow gateway. Here is how it protects you:
+                </p>
+                <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: "12px", textAlign: "left", fontSize: "0.85rem", color: "white" }}>
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <span style={{ background: "var(--primary)", color: "black", borderRadius: "50%", width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", flexShrink: 0 }}>1</span>
+                    <span><strong>Commit Funds:</strong> You pay for the produce. The funds are held securely in escrow. The farmer is notified to harvest and package your order.</span>
+                  </div>
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <span style={{ background: "var(--primary)", color: "black", borderRadius: "50%", width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", flexShrink: 0 }}>2</span>
+                    <span><strong>Logistics Delivery:</strong> A verified logistics carrier is assigned, picks up the fresh harvest, and delivers it to your location.</span>
+                  </div>
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <span style={{ background: "var(--primary)", color: "black", borderRadius: "50%", width: "20px", height: "20px", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", flexShrink: 0 }}>3</span>
+                    <span><strong>Inspect & Release:</strong> Once you inspect the produce and confirm it is fresh and correct, click "Confirm Receipt" to release the funds directly to the farmer's wallet.</span>
+                  </div>
+                </div>
+                <button className="btn btn-primary" style={{ width: "100%", padding: "12px", marginTop: "10px" }} onClick={() => setShowEscrowInfo(false)}>
+                  Got It, Let's Trade!
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
