@@ -600,7 +600,7 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
                 variants={staggerContainer}
                 initial="hidden"
                 animate="show"
-                className="product-grid"
+                className="product-grid horizontal-scrollable"
               >
                 {sortedProducts.map(product => {
                   const farmer = getFarmerDetails(product.farmerId);

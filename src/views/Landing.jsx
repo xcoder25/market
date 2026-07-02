@@ -218,7 +218,7 @@ export default function Landing({ onExplore, onAuthClick, db }) {
             whileInView="visible"
             viewport={{ once: true, margin: "-100px" }}
             transition={{ staggerChildren: 0.1 }}
-            className="product-grid"
+            className="product-grid horizontal-scrollable"
           >
             {localProduce.map((p, idx) => (
               <motion.div

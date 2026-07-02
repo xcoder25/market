@@ -44,6 +44,28 @@ export default function App() {
   const [showNotifDrawer, setShowNotifDrawer] = useState(false);
   const [chatPreselectedRecipient, setChatPreselectedRecipient] = useState(null);
 
+  // Network connection status state
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const isOfflineDemoMode = localStorage.getItem("ibom_offline_mode") === "true";
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  const handleExitOfflineMode = () => {
+    localStorage.removeItem("ibom_offline_mode");
+    window.location.reload();
+  };
+
   // Load local user session from localStorage
   const [currentUser, setCurrentUser] = useState(() => {
     const saved = localStorage.getItem("ibom_current_user");
@@ -94,6 +116,8 @@ export default function App() {
         const initialDb = getDB();
         setDoc(docRef, { state: initialDb }).catch(err => console.error("Firestore init error:", err));
       }
+    }, (err) => {
+      console.warn("Firestore sync connection offline or unreachable:", err.message);
     });
 
     return () => unsubscribe();
@@ -171,6 +195,9 @@ export default function App() {
     if (isConfigured && auth) {
       import("firebase/auth").then(({ signOut }) => signOut(auth));
     }
+    
+    // Clear offline fallback so it tries real connection next time
+    localStorage.removeItem("ibom_offline_mode");
     
     setCurrentUser(null);
     setCurrentRole(null);
@@ -257,6 +284,89 @@ export default function App() {
 
   return (
     <div className="app-container">
+      {/* Offline Status Banner */}
+      <AnimatePresence>
+        {(!isOnline || isOfflineDemoMode) && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="network-status-banner"
+            style={{
+              background: isOfflineDemoMode 
+                ? "rgba(245, 158, 11, 0.18)" 
+                : "rgba(239, 68, 68, 0.18)",
+              backdropFilter: "blur(12px)",
+              borderBottom: `1px solid ${isOfflineDemoMode ? "var(--warning)" : "var(--danger)"}`,
+              padding: "10px 24px",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: "0.85rem",
+              zIndex: 1100,
+              gap: "12px",
+              color: "white",
+              flexWrap: "wrap"
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              {isOfflineDemoMode ? (
+                <>
+                  <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "50%", background: "var(--warning)" }} />
+                  <span><strong>Demo Mode:</strong> You are currently simulating offline mode. Changes are saved locally.</span>
+                </>
+              ) : (
+                <>
+                  <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "50%", background: "var(--danger)" }} />
+                  <span><strong>Offline:</strong> Firestore sync connection is unreachable. Real-time updates paused.</span>
+                </>
+              )}
+            </div>
+            
+            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+              {isOfflineDemoMode ? (
+                <button
+                  className="btn btn-primary btn-sm"
+                  style={{
+                    padding: "4px 10px",
+                    fontSize: "0.75rem",
+                    background: "var(--primary)",
+                    borderColor: "var(--primary)",
+                    color: "white",
+                    fontWeight: "bold",
+                    borderRadius: "4px",
+                    cursor: "pointer"
+                  }}
+                  onClick={handleExitOfflineMode}
+                >
+                  Reconnect
+                </button>
+              ) : (
+                <button
+                  className="btn btn-secondary btn-sm"
+                  style={{
+                    padding: "4px 10px",
+                    fontSize: "0.75rem",
+                    background: "var(--warning)",
+                    borderColor: "var(--warning)",
+                    color: "black",
+                    fontWeight: "bold",
+                    borderRadius: "4px",
+                    cursor: "pointer"
+                  }}
+                  onClick={() => {
+                    localStorage.setItem("ibom_offline_mode", "true");
+                    window.location.reload();
+                  }}
+                >
+                  Switch to Offline Demo
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Main App Navigation */}
       <nav className="main-navbar">
         <a href="#" className="nav-brand" onClick={() => setCurrentView("landing")}>

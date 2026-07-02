@@ -13,6 +13,7 @@ export default function Auth({ onAuthSuccess, onBackToLanding }) {
   const [loading, setLoading] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [showOfflineFallback, setShowOfflineFallback] = useState(false);
 
   // Form inputs
   const [email, setEmail] = useState("");
@@ -33,6 +34,7 @@ export default function Auth({ onAuthSuccess, onBackToLanding }) {
   const handleAuth = async (e) => {
     e.preventDefault();
     setError("");
+    setShowOfflineFallback(false);
     setLoading(true);
 
     if (!isConfigured) {
@@ -196,6 +198,14 @@ export default function Auth({ onAuthSuccess, onBackToLanding }) {
         setError("This user account has been disabled.");
       } else if (code === "auth/too-many-requests") {
         setError("Access to this account has been temporarily disabled due to many failed login attempts. Try again later or reset your password.");
+      } else if (
+        code === "unavailable" || 
+        err.message?.toLowerCase().includes("offline") || 
+        err.message?.toLowerCase().includes("network") || 
+        err.message?.toLowerCase().includes("failed to get document")
+      ) {
+        setError("Network connection issue: Failed to connect to Firebase. Please check your internet connection or switch to Offline Demo Mode.");
+        setShowOfflineFallback(true);
       } else {
         setError(err.message || "An authentication error occurred.");
       }
@@ -207,6 +217,7 @@ export default function Auth({ onAuthSuccess, onBackToLanding }) {
   const handleForgotPassword = async (e) => {
     e.preventDefault();
     setError("");
+    setShowOfflineFallback(false);
     setLoading(true);
     setResetEmailSent(false);
 
@@ -241,6 +252,9 @@ export default function Auth({ onAuthSuccess, onBackToLanding }) {
         setError("No account found with this email.");
       } else if (code === "auth/invalid-email") {
         setError("Invalid email address format.");
+      } else if (code === "unavailable" || err.message?.includes("offline") || err.message?.includes("network") || err.message?.includes("client is offline")) {
+        setError("Network connection issue: Failed to connect to Firebase. Please check your internet connection or switch to Offline Demo Mode.");
+        setShowOfflineFallback(true);
       } else {
         setError(err.message || "Could not send password reset email.");
       }
@@ -284,15 +298,60 @@ export default function Auth({ onAuthSuccess, onBackToLanding }) {
             : "Register to trade crops, schedule logistics, and query live market prices"}
         </p>
 
-        {!isConfigured && (
+        {!isConfigured ? (
           <div style={{ background: "rgba(245, 158, 11, 0.08)", border: "1px solid rgba(245, 158, 11, 0.2)", borderRadius: "8px", padding: "10px 14px", marginBottom: "20px", fontSize: "0.8rem", color: "var(--secondary-light)", lineHeight: 1.4 }}>
             <strong>Local Mode Active:</strong> Firebase API keys not found in <code>.env.local</code>. Running securely on local storage sync. Try test logins below:
+          </div>
+        ) : (
+          <div style={{ background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--glass-border)", borderRadius: "8px", padding: "10px 14px", marginBottom: "20px", fontSize: "0.8rem", color: "var(--gray-600)", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "10px" }}>
+            <span>Live mode active.</span>
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.setItem("ibom_offline_mode", "true");
+                window.location.reload();
+              }}
+              style={{
+                background: "none",
+                border: "none",
+                color: "var(--primary)",
+                fontSize: "0.78rem",
+                cursor: "pointer",
+                textDecoration: "underline",
+                padding: 0,
+                fontWeight: "600"
+              }}
+            >
+              Switch to Offline Demo Mode
+            </button>
           </div>
         )}
 
         {error && (
           <div style={{ background: "rgba(239, 68, 68, 0.12)", border: "1px solid var(--danger)", color: "var(--danger)", borderRadius: "8px", padding: "10px 14px", marginBottom: "20px", fontSize: "0.85rem" }}>
-            {error}
+            <div>{error}</div>
+            {showOfflineFallback && (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                style={{ 
+                  marginTop: "10px", 
+                  width: "100%", 
+                  padding: "8px", 
+                  fontSize: "0.8rem", 
+                  background: "var(--secondary)", 
+                  borderColor: "var(--secondary)",
+                  color: "black",
+                  fontWeight: "bold"
+                }}
+                onClick={() => {
+                  localStorage.setItem("ibom_offline_mode", "true");
+                  window.location.reload();
+                }}
+              >
+                ⚡ Switch to Offline Demo Mode
+              </button>
+            )}
           </div>
         )}
 

@@ -524,6 +524,119 @@ h1, h2, h3, h4, h5, h6 {
   gap: 28px;
 }
 
+/* Horizontal Scrollable Grid Support */
+.product-grid.horizontal-scrollable {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 20px;
+  padding: 10px 4px 20px 4px;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.product-grid.horizontal-scrollable::-webkit-scrollbar {
+  height: 8px;
+}
+.product-grid.horizontal-scrollable::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+.product-grid.horizontal-scrollable::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 4px;
+}
+.product-grid.horizontal-scrollable::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+
+.product-grid.horizontal-scrollable .product-card {
+  flex: 0 0 300px;
+  scroll-snap-align: start;
+}
+
+@media (max-width: 768px) {
+  .product-grid.horizontal-scrollable {
+    gap: 12px;
+    padding-bottom: 12px;
+  }
+  .product-grid.horizontal-scrollable .product-card {
+    flex: 0 0 170px;
+  }
+  .product-grid.horizontal-scrollable .product-img-wrapper {
+    height: 110px !important;
+  }
+  .product-grid.horizontal-scrollable .product-details {
+    padding: 12px !important;
+  }
+  .product-grid.horizontal-scrollable .product-cat {
+    font-size: 0.65rem !important;
+  }
+  .product-grid.horizontal-scrollable .product-name {
+    font-size: 0.85rem !important;
+    margin: 2px 0 6px 0 !important;
+    line-height: 1.2 !important;
+    height: 2.4em !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+  }
+  .product-grid.horizontal-scrollable .product-meta {
+    font-size: 0.7rem !important;
+    margin-bottom: 8px !important;
+    padding-bottom: 8px !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+  .product-grid.horizontal-scrollable .product-meta > span {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    max-width: 100% !important;
+  }
+  .product-grid.horizontal-scrollable .product-rating-compact {
+    display: none !important;
+  }
+  .product-grid.horizontal-scrollable .product-card p {
+    display: none !important;
+  }
+  .product-grid.horizontal-scrollable .product-price-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+    margin-top: auto !important;
+    width: 100% !important;
+  }
+  .product-grid.horizontal-scrollable .product-price {
+    font-size: 1.1rem !important;
+  }
+  .product-grid.horizontal-scrollable .product-price span {
+    font-size: 0.7rem !important;
+  }
+  .product-grid.horizontal-scrollable .product-price-row button {
+    width: 100% !important;
+    font-size: 0.75rem !important;
+    padding: 6px 12px !important;
+  }
+  .product-grid.horizontal-scrollable .product-farmer-badge {
+    bottom: -15px !important;
+    right: 8px !important;
+  }
+  .product-grid.horizontal-scrollable .product-farmer-badge img {
+    width: 30px !important;
+    height: 30px !important;
+  }
+  .product-grid.horizontal-scrollable .product-card-badge {
+    font-size: 0.65rem !important;
+    padding: 2px 8px !important;
+    top: 8px !important;
+    left: 8px !important;
+  }
+}
+
+
 /* Product Card */
 .product-card {
   border-radius: var(--radius-md);
