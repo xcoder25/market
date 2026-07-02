@@ -1,15 +1,33 @@
 import React, { useState, useEffect } from "react";
-import { DollarSign, ShoppingBag, PlusCircle, Check, X, ShieldAlert, Sparkles, TrendingUp, BarChart2, Star, Calendar, RefreshCw } from "lucide-react";
+import { DollarSign, ShoppingBag, PlusCircle, Check, X, ShieldAlert, Sparkles, TrendingUp, BarChart2, Star, Calendar, RefreshCw, Edit, Shield, Globe } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getDB, updateOrderStatus, addProductListing, updateProduct, CATEGORIES, AKWA_IBOM_LOCATIONS, saveDB } from "../db/store";
+import { 
+  getDB, 
+  updateOrderStatus, 
+  addProductListing, 
+  updateProduct, 
+  CATEGORIES, 
+  AKWA_IBOM_LOCATIONS, 
+  saveDB,
+  subscribeToPlan,
+  purchaseAd,
+  updateBusinessStorefront
+} from "../db/store";
 import Loader3D from "../components/Loader3D";
+import PaystackCheckoutModal from "../components/PaystackCheckoutModal";
 
 export default function FarmerDashboard({ activeUser, onSwitchView }) {
   const [db, setDb] = useState(getDB());
-  const [activeTab, setActiveTab] = useState("overview"); // overview, orders, products, harvest
+  const [activeTab, setActiveTab] = useState("overview"); // overview, orders, products, storefront, analytics, harvest
   const [showAddForm, setShowAddForm] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
+  
+  // Paystack checkout integration states
+  const [showPaystack, setShowPaystack] = useState(false);
+  const [paystackAmount, setPaystackAmount] = useState(0);
+  const [paystackActionType, setPaystackActionType] = useState(""); // "sub" or "ad"
+  const [paystackItemName, setPaystackItemName] = useState(""); // plan name or ad type
   
   // New product form states
   const [prodName, setProdName] = useState("");
@@ -28,6 +46,11 @@ export default function FarmerDashboard({ activeUser, onSwitchView }) {
   const [newHarvestMonth, setNewHarvestMonth] = useState("July");
   const [newHarvestStatus, setNewHarvestStatus] = useState("Available");
   const [newHarvestDesc, setNewHarvestDesc] = useState("");
+
+  const [storeName, setStoreName] = useState(activeUser.farmName || "");
+  const [storeBio, setStoreBio] = useState(activeUser.bio || "");
+  const [storeWhatsapp, setStoreWhatsapp] = useState(activeUser.whatsapp || "");
+  const [storeHours, setStoreHours] = useState(activeUser.businessHours || "8:00 AM - 6:00 PM");
 
   useEffect(() => {
     const handleUpdate = () => setDb(getDB());
@@ -202,8 +225,8 @@ export default function FarmerDashboard({ activeUser, onSwitchView }) {
     <div className="farmer-dashboard">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
         <div>
-          <h2>Farmer Dashboard</h2>
-          <p style={{ color: "var(--gray-600)" }}>Manage your farm listings, fulfill orders, and track your agricultural earnings.</p>
+          <h2>{activeUser.role === "Farmer" ? "Farmer Dashboard" : "Business Dashboard"}</h2>
+          <p style={{ color: "var(--gray-600)" }}>{activeUser.role === "Farmer" ? "Manage your farm listings, fulfill orders, and track your agricultural earnings." : "Manage your business storefront, list products or services, and track sales revenue."}</p>
         </div>
         <div className="dashboard-tabs">
           <button 
@@ -225,11 +248,25 @@ export default function FarmerDashboard({ activeUser, onSwitchView }) {
             My Listings ({myProducts.length})
           </button>
           <button 
-            className={`tab-pill ${activeTab === "harvest" ? "active" : ""}`}
-            onClick={() => setActiveTab("harvest")}
+            className={`tab-pill ${activeTab === "storefront" ? "active" : ""}`}
+            onClick={() => setActiveTab("storefront")}
           >
-            Harvest Calendar
+            Storefront
           </button>
+          <button 
+            className={`tab-pill ${activeTab === "analytics" ? "active" : ""}`}
+            onClick={() => setActiveTab("analytics")}
+          >
+            Analytics
+          </button>
+          {activeUser.role === "Farmer" && (
+            <button 
+              className={`tab-pill ${activeTab === "harvest" ? "active" : ""}`}
+              onClick={() => setActiveTab("harvest")}
+            >
+              Harvest Calendar
+            </button>
+          )}
         </div>
       </div>
 
@@ -640,6 +677,222 @@ export default function FarmerDashboard({ activeUser, onSwitchView }) {
             </div>
           </motion.div>
         )}
+
+        {activeTab === "storefront" && (
+          <motion.div
+            key="storefront"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.2 }}
+            className="card"
+            style={{ display: "flex", flexDirection: "column", gap: "24px" }}
+          >
+            <div style={{ borderBottom: "1px solid var(--glass-border)", paddingBottom: "12px" }}>
+              <h3 style={{ margin: 0, color: "white" }}>Digital Storefront Manager</h3>
+              <p style={{ color: "var(--gray-600)", margin: "4px 0 0 0", fontSize: "0.85rem" }}>Configure your storefront branding, WhatsApp chat links, and business hours visible to buyers.</p>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "24px" }}>
+              {/* Profile settings */}
+              <div className="card" style={{ padding: "20px" }}>
+                <h4 style={{ color: "white", marginBottom: "16px" }}>Storefront Profile Settings</h4>
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  setActionLoading(true);
+                  setLoadingMessage("Updating storefront parameters...");
+                  setTimeout(() => {
+                    const updatedDb = updateBusinessStorefront({
+                      farmName: storeName,
+                      bio: storeBio,
+                      whatsapp: storeWhatsapp,
+                      businessHours: storeHours
+                    });
+                    setDb(updatedDb);
+                    setActionLoading(false);
+                    alert("Storefront profile details updated successfully!");
+                  }, 1000);
+                }}>
+                  <div className="form-field" style={{ marginBottom: "12px" }}>
+                    <label>Store / Business Name *</label>
+                    <input type="text" value={storeName} onChange={(e) => setStoreName(e.target.value)} required />
+                  </div>
+                  <div className="form-field" style={{ marginBottom: "12px" }}>
+                    <label>WhatsApp Contact Number (International format e.g. 2348030000000) *</label>
+                    <input type="text" value={storeWhatsapp} onChange={(e) => setStoreWhatsapp(e.target.value)} placeholder="2348000000000" required />
+                  </div>
+                  <div className="form-field" style={{ marginBottom: "12px" }}>
+                    <label>Business Operating Hours *</label>
+                    <input type="text" value={storeHours} onChange={(e) => setStoreHours(e.target.value)} placeholder="e.g. 8:00 AM - 6:00 PM" required />
+                  </div>
+                  <div className="form-field" style={{ marginBottom: "16px" }}>
+                    <label>Storefront Bio / Description</label>
+                    <textarea rows="3" value={storeBio} onChange={(e) => setStoreBio(e.target.value)} placeholder="Write a short pitch about your products or services..." />
+                  </div>
+                  <button type="submit" className="btn btn-primary" style={{ width: "100%" }}>Save Storefront Details</button>
+                </form>
+              </div>
+
+              {/* Subscriptions & Ads */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                {/* Subscription Upgrade */}
+                <div className="card" style={{ padding: "20px" }}>
+                  <h4 style={{ color: "white", marginBottom: "12px" }}>Premium Store Plan</h4>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px", background: "rgba(255,255,255,0.02)", padding: "10px", borderRadius: "8px", border: "1px solid var(--glass-border)" }}>
+                    <Shield size={24} style={{ color: "var(--secondary-light)" }} />
+                    <div>
+                      <small style={{ color: "var(--gray-600)", display: "block" }}>CURRENT PLAN TIER</small>
+                      <strong style={{ color: "white", fontSize: "1.1rem" }}>{activeUser.subscriptionPlan || "Free Tier"}</strong>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    {activeUser.subscriptionPlan !== "Pro" && activeUser.subscriptionPlan !== "Premium" && (
+                      <button 
+                        className="btn btn-outline" 
+                        onClick={() => {
+                          setPaystackAmount(15000);
+                          setPaystackActionType("sub");
+                          setPaystackItemName("Pro");
+                          setShowPaystack(true);
+                        }}
+                      >
+                        Upgrade to Pro (₦15k/mo)
+                      </button>
+                    )}
+                    {activeUser.subscriptionPlan !== "Premium" && (
+                      <button 
+                        className="btn btn-primary" 
+                        onClick={() => {
+                          setPaystackAmount(35000);
+                          setPaystackActionType("sub");
+                          setPaystackItemName("Premium");
+                          setShowPaystack(true);
+                        }}
+                      >
+                        Upgrade to Premium (₦35k/mo)
+                      </button>
+                    )}
+                    {(activeUser.subscriptionPlan === "Pro" || activeUser.subscriptionPlan === "Premium") && (
+                      <p style={{ fontSize: "0.8rem", color: "var(--primary-light)", margin: 0, textAlign: "center", fontWeight: "bold" }}>
+                        ✓ Your premium account is fully active! Enjoy high visibility & priority listings.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Ad Campaign Purchase */}
+                <div className="card" style={{ padding: "20px" }}>
+                  <h4 style={{ color: "white", marginBottom: "12px" }}>Purchase Sponsored Ad Spaces</h4>
+                  <p style={{ fontSize: "0.8rem", color: "var(--gray-600)", margin: "0 0 16px 0", lineHeight: 1.45 }}>Boost visibility by showing your products/services in dedicated ad slots on the homepage or search results.</p>
+                  
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                    <button 
+                      className="btn btn-outline btn-sm"
+                      style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                      onClick={() => {
+                        setPaystackAmount(12000);
+                        setPaystackActionType("ad");
+                        setPaystackItemName("Homepage Banner");
+                        setShowPaystack(true);
+                      }}
+                    >
+                      <span>Homepage Banner Slot</span>
+                      <strong>₦12,000</strong>
+                    </button>
+                    <button 
+                      className="btn btn-outline btn-sm"
+                      style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                      onClick={() => {
+                        setPaystackAmount(8000);
+                        setPaystackActionType("ad");
+                        setPaystackItemName("Category Banner");
+                        setShowPaystack(true);
+                      }}
+                    >
+                      <span>Category Showcase Slot</span>
+                      <strong>₦8,000</strong>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {activeTab === "analytics" && (
+          <motion.div
+            key="analytics"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.2 }}
+            className="card"
+            style={{ display: "flex", flexDirection: "column", gap: "24px" }}
+          >
+            <div style={{ borderBottom: "1px solid var(--glass-border)", paddingBottom: "12px" }}>
+              <h3 style={{ margin: 0, color: "white" }}>Business Analytics Dashboard</h3>
+              <p style={{ color: "var(--gray-600)", margin: "4px 0 0 0", fontSize: "0.85rem" }}>Monitor customer interactions, click conversion ratios, and product views.</p>
+            </div>
+
+            {/* Simulated analytics cards */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px" }}>
+              <div className="card" style={{ padding: "16px", textAlign: "center" }}>
+                <small style={{ color: "var(--gray-600)" }}>Profile Visitors</small>
+                <h2 style={{ color: "white", margin: "8px 0", fontSize: "1.8rem" }}>284</h2>
+                <span style={{ fontSize: "0.75rem", color: "var(--primary-light)" }}>+12% vs last week</span>
+              </div>
+              <div className="card" style={{ padding: "16px", textAlign: "center" }}>
+                <small style={{ color: "var(--gray-600)" }}>Product Detail Views</small>
+                <h2 style={{ color: "white", margin: "8px 0", fontSize: "1.8rem" }}>1,490</h2>
+                <span style={{ fontSize: "0.75rem", color: "var(--primary-light)" }}>+8% vs last week</span>
+              </div>
+              <div className="card" style={{ padding: "16px", textAlign: "center" }}>
+                <small style={{ color: "var(--gray-600)" }}>Customer Enquiries</small>
+                <h2 style={{ color: "white", margin: "8px 0", fontSize: "1.8rem" }}>36</h2>
+                <span style={{ fontSize: "0.75rem", color: "var(--secondary-light)" }}>+15% vs last week</span>
+              </div>
+              <div className="card" style={{ padding: "16px", textAlign: "center" }}>
+                <small style={{ color: "var(--gray-600)" }}>Conversion Rate</small>
+                <h2 style={{ color: "white", margin: "8px 0", fontSize: "1.8rem" }}>4.8%</h2>
+                <span style={{ fontSize: "0.75rem", color: "var(--primary-light)" }}>Steady</span>
+              </div>
+            </div>
+
+            {/* Sales ledger info */}
+            <div className="card" style={{ padding: "20px" }}>
+              <h4 style={{ color: "white", marginBottom: "16px" }}>Top Product Sales Analytics</h4>
+              {myProducts.length > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  {myProducts.map(prod => {
+                    const views = Math.floor(prod.price / 100) + 120;
+                    const inquiries = Math.floor(views * 0.05) + 2;
+                    return (
+                      <div key={prod.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px", border: "1px solid var(--glass-border)", background: "rgba(255,255,255,0.01)", borderRadius: "8px" }}>
+                        <div>
+                          <strong style={{ color: "white" }}>{prod.name}</strong>
+                          <div style={{ fontSize: "0.8rem", color: "var(--gray-600)", marginTop: "4px" }}>Unit Price: ₦{prod.price.toLocaleString()}</div>
+                        </div>
+                        <div style={{ display: "flex", gap: "20px", fontSize: "0.85rem", textAlign: "right" }}>
+                          <div>
+                            <small style={{ color: "var(--gray-600)", display: "block" }}>VIEWS</small>
+                            <span style={{ color: "white", fontWeight: "bold" }}>{views}</span>
+                          </div>
+                          <div>
+                            <small style={{ color: "var(--gray-600)", display: "block" }}>ENQUIRIES</small>
+                            <span style={{ color: "var(--secondary-light)", fontWeight: "bold" }}>{inquiries}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p style={{ fontSize: "0.85rem", color: "var(--gray-600)", fontStyle: "italic", margin: 0 }}>No active listings. List a product or service to begin tracking metrics.</p>
+              )}
+            </div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* Add Product Modal Form */}
@@ -740,6 +993,39 @@ export default function FarmerDashboard({ activeUser, onSwitchView }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <PaystackCheckoutModal 
+        isOpen={showPaystack}
+        onClose={() => setShowPaystack(false)}
+        amount={paystackAmount}
+        email={activeUser ? activeUser.email : "merchant@ibomone.com"}
+        onSuccess={(refData) => {
+          setActionLoading(true);
+          setShowPaystack(false);
+          if (paystackActionType === "sub") {
+            setLoadingMessage(`Provisioning premium plan: ${paystackItemName}...`);
+            setTimeout(() => {
+              const updatedDb = subscribeToPlan(paystackItemName, paystackAmount);
+              setDb(updatedDb);
+              setActionLoading(false);
+              alert(`Congratulations! You are now subscribed to the ${paystackItemName} Plan.`);
+              window.dispatchEvent(new Event("db_update"));
+            }, 1200);
+          } else {
+            setLoadingMessage(`Launching ad campaign: ${paystackItemName}...`);
+            setTimeout(() => {
+              const updatedDb = purchaseAd(paystackItemName, paystackAmount);
+              setDb(updatedDb);
+              setActionLoading(false);
+              alert(`${paystackItemName} campaign launched successfully!`);
+              window.dispatchEvent(new Event("db_update"));
+            }, 1200);
+          }
+        }}
+        onCancel={() => {
+          setShowPaystack(false);
+        }}
+      />
 
       {actionLoading && (
         <Loader3D fullScreen={true} message={loadingMessage} />

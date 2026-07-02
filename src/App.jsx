@@ -43,6 +43,8 @@ export default function App() {
   const [currentView, setCurrentView] = useState("landing"); // landing, auth, marketplace, farmer_dashboard, logistics_dashboard, admin_dashboard, messaging, prices, ai_assistant
   const [showNotifDrawer, setShowNotifDrawer] = useState(false);
   const [chatPreselectedRecipient, setChatPreselectedRecipient] = useState(null);
+  const [marketplaceSearchQuery, setMarketplaceSearchQuery] = useState("");
+  const [marketplaceActiveTab, setMarketplaceActiveTab] = useState("listings");
 
   // Network connection status state
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -195,7 +197,7 @@ export default function App() {
     setDb(currentDb);
 
     // Dynamic routing after login
-    if (user.role === "Farmer") setCurrentView("farmer_dashboard");
+    if (user.role === "Farmer" || user.role === "Seller") setCurrentView("farmer_dashboard");
     else if (user.role === "Logistics Partner") setCurrentView("logistics_dashboard");
     else if (user.role === "Admin") setCurrentView("admin_dashboard");
     else setCurrentView("marketplace");
@@ -382,7 +384,7 @@ export default function App() {
       {/* Main App Navigation */}
       <nav className="main-navbar">
         <a href="#" className="nav-brand" onClick={() => setCurrentView("landing")}>
-          Ibom Agro <span>Market</span>
+          Ibom<span>One</span>
         </a>
 
         {/* Dynamic Navigation Links */}
@@ -396,9 +398,9 @@ export default function App() {
                   <li><a className={`nav-link ${currentView === "ai_assistant" ? "active" : ""}`} onClick={() => setCurrentView("ai_assistant")}>AI Assistant</a></li>
                 </>
               )}
-              {currentRole === "Farmer" && (
+              {(currentRole === "Farmer" || currentRole === "Seller") && (
                 <>
-                  <li><a className={`nav-link ${currentView === "farmer_dashboard" ? "active" : ""}`} onClick={() => setCurrentView("farmer_dashboard")}>Farmer Dashboard</a></li>
+                  <li><a className={`nav-link ${currentView === "farmer_dashboard" ? "active" : ""}`} onClick={() => setCurrentView("farmer_dashboard")}>{currentRole === "Farmer" ? "Farmer Dashboard" : "Seller Dashboard"}</a></li>
                   <li><a className={`nav-link ${currentView === "prices" ? "active" : ""}`} onClick={() => setCurrentView("prices")}>Market Indices</a></li>
                 </>
               )}
@@ -524,10 +526,14 @@ export default function App() {
           >
             {currentView === "landing" && (
               <Landing 
-                onExplore={() => setCurrentView("marketplace")}
+                onExplore={(query = "", tab = "listings") => {
+                  setMarketplaceSearchQuery(query);
+                  setMarketplaceActiveTab(tab);
+                  setCurrentView("marketplace");
+                }}
                 onAuthClick={() => {
                   if (currentUser) {
-                    if (currentRole === "Farmer") setCurrentView("farmer_dashboard");
+                    if (currentRole === "Farmer" || currentRole === "Seller") setCurrentView("farmer_dashboard");
                     else if (currentRole === "Logistics Partner") setCurrentView("logistics_dashboard");
                     else if (currentRole === "Admin") setCurrentView("admin_dashboard");
                     else setCurrentView("marketplace");
@@ -549,6 +555,8 @@ export default function App() {
                 activeUser={currentUser} 
                 onSwitchView={setCurrentView} 
                 onOpenChat={handleOpenChat} 
+                initialSearchQuery={marketplaceSearchQuery}
+                initialTab={marketplaceActiveTab}
               />
             )}
             {currentView === "farmer_dashboard" && currentUser && (

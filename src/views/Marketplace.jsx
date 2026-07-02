@@ -3,9 +3,10 @@ import {
   Search, Filter, ShieldCheck, Heart, ShoppingBag, Calendar, Check, Send, 
   AlertCircle, RefreshCw, X, MessageSquare, Star, FileText, CreditCard, 
   Truck, MapPin, Sprout, Fish, Egg, Beef, Droplets, Package, Apple, 
-  CheckCircle2, ChevronRight, Copy, Award, Shield, Bell
+  CheckCircle2, ChevronRight, Copy, Award, Shield, Bell, Compass, Globe
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import PaystackCheckoutModal from "../components/PaystackCheckoutModal";
 import { 
   getDB, 
   placeOrder, 
@@ -13,7 +14,12 @@ import {
   leaveReview, 
   sendMessage, 
   AKWA_IBOM_LOCATIONS, 
-  CATEGORIES 
+  CATEGORIES,
+  VERTICALS,
+  toggleFollowStore,
+  updateBusinessStorefront,
+  subscribeToPlan,
+  purchaseAd
 } from "../db/store";
 import Loader3D from "../components/Loader3D";
 
@@ -27,16 +33,16 @@ const CATEGORY_ICONS = {
   Fruits: <Apple size={16} />
 };
 
-export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
+export default function Marketplace({ activeUser, onSwitchView, onOpenChat, initialSearchQuery = "", initialTab = "listings" }) {
   const [db, setDb] = useState(getDB());
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(initialSearchQuery);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedLga, setSelectedLga] = useState("All");
   const [selectedVerification, setSelectedVerification] = useState("All");
   const [sortBy, setSortBy] = useState("Recently Added");
   const [organicFilter, setOrganicFilter] = useState("All"); // All, Organic, Non-Organic
 
-  const [activeTab, setActiveTab] = useState("listings"); // listings, farmers, harvest_calendar, my_orders
+  const [activeTab, setActiveTab] = useState(initialTab); // listings, farmers, harvest_calendar, my_orders
   
   // Mobile filter drawer state
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
@@ -48,13 +54,14 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
   const [currentInvoice, setCurrentInvoice] = useState(null);
   
   // Paystack checkout portal states
-  const [paymentMethod, setPaymentMethod] = useState("card"); // card, transfer
+  const [paymentMethod, setPaymentMethod] = useState("paystack"); // paystack, wallet
   const [cardNumber, setCardNumber] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCvc, setCardCvc] = useState("");
   const [cardName, setCardName] = useState("");
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [showPaystackModal, setShowPaystackModal] = useState(false);
 
   const [selectedFarmer, setSelectedFarmer] = useState(null);
   const [selectedOrderForTracking, setSelectedOrderForTracking] = useState(null);
@@ -308,6 +315,20 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
     return 0;
   });
 
+  const handleFollowStore = (sellerId) => {
+    if (!activeUser) {
+      onSwitchView("auth");
+      return;
+    }
+    const updatedDb = toggleFollowStore(sellerId);
+    setDb(updatedDb);
+    const updatedSeller = updatedDb.users.find(u => u.id === sellerId);
+    if (selectedFarmer && selectedFarmer.id === sellerId) {
+      setSelectedFarmer(updatedSeller);
+    }
+    window.dispatchEvent(new Event("db_update"));
+  };
+
   // Handle order submission
   const handlePlaceOrder = (product) => {
     if (!activeUser) {
@@ -433,16 +454,17 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
     <div className="marketplace-page">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px", flexWrap: "wrap", gap: "16px", borderBottom: "1px solid var(--glass-border)", paddingBottom: "16px", width: "100%" }}>
         <div>
-          <h2>Ibom Agro Marketplace</h2>
-          <p style={{ color: "var(--gray-600)" }}>Connecting you to verified local farmers across Akwa Ibom State</p>
+          <h2>IbomOne</h2>
+          <p style={{ color: "var(--gray-600)" }}>Connecting buyers, sellers, service providers, and directory storefronts in one trusted ecosystem</p>
         </div>
         
         <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
           <div className="marketplace-nav-tabs">
             {[
-              { id: "listings", label: "Browse Produce", icon: <ShoppingBag size={16} /> },
-              { id: "bulk", label: "Bulk & Palm Oil Trade", icon: <Droplets size={16} /> },
+              { id: "listings", label: "Browse Products", icon: <ShoppingBag size={16} /> },
+              { id: "bulk", label: "Bulk Palm Oil", icon: <Droplets size={16} /> },
               { id: "farmers", label: "Farmers Directory", icon: <ShieldCheck size={16} /> },
+              { id: "directory", label: "Business Directory", icon: <Compass size={16} /> },
               { id: "harvest_calendar", label: "Harvest Calendar", icon: <Calendar size={16} /> },
               ...(activeUser ? [{ id: "my_orders", label: `My Orders (${myPendingOrders.length})`, icon: <FileText size={16} /> }] : [])
             ].map(tab => (
@@ -534,30 +556,30 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
               background: "linear-gradient(135deg, rgba(88, 28, 135, 0.2) 0%, rgba(124, 58, 237, 0.45) 100%)", 
               border: "1px solid var(--glass-border)", 
               borderRadius: "16px", 
-              padding: "24px 32px", 
-              marginBottom: "28px", 
+              padding: "clamp(16px, 5vw, 24px) clamp(20px, 6vw, 32px)", 
+              marginBottom: "20px", 
               position: "relative", 
               overflow: "hidden"
             }}
           >
             <div style={{ position: "absolute", right: "-20px", bottom: "-20px", width: "150px", height: "150px", background: "var(--secondary)", filter: "blur(60px)", opacity: 0.25, pointerEvents: "none" }} />
             <span style={{ color: "var(--secondary-light)", fontSize: "0.8rem", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6px", display: "block" }}>Wholesale B2B Trading Hub</span>
-            <h3 style={{ fontSize: "1.8rem", color: "white", fontWeight: "900", marginBottom: "8px", fontFamily: "var(--font-display)", margin: 0 }}>
-              Akwa Ibom Palm Oil & Bulk Commodities Hub
+            <h3 style={{ fontSize: "clamp(1.3rem, 4vw, 1.8rem)", color: "white", fontWeight: "900", marginBottom: "8px", fontFamily: "var(--font-display)", margin: 0 }}>
+              Akwa Ibom Bulk Palm Oil Hub
             </h3>
-            <p style={{ color: "rgba(255,255,255,0.75)", fontSize: "0.95rem", maxWidth: "650px", lineHeight: 1.4, margin: "6px 0 0 0" }}>
-              Direct mill bookings from Abak, Eket, and Mkpat Enin. Secured by 3% Escrow Commission with fixed inter-LGA Bulk Haulage Carrier matching. Save 5% on 10+ Jerrycans, 10% on 50+.
+            <p style={{ color: "rgba(255,255,255,0.75)", fontSize: "clamp(0.8rem, 2.5vw, 0.95rem)", maxWidth: "650px", lineHeight: 1.4, margin: "6px 0 0 0" }}>
+              Direct mill bookings from Abak, Eket, and Uyo. Secured by 3% Escrow Commission with fixed inter-LGA Bulk Haulage Carrier matching. Save 5% on 10+ Jerrycans, 10% on 50+.
             </p>
           </div>
 
           {/* Bulk Listings Grid */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-            <h4 style={{ fontSize: "1.2rem", color: "white", margin: 0 }}>Wholesale Commodities</h4>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
+            <h4 style={{ fontSize: "1.2rem", color: "white", margin: 0 }}>Wholesale Palm Oil Listings</h4>
             <span style={{ fontSize: "0.85rem", color: "var(--gray-600)" }}>Verified cooperative mills & processing yards</span>
           </div>
 
-          <div className="product-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
-            {db.products.filter(p => p.isBulk && p.status === "Available").map(product => {
+          <div className="product-grid" style={{ gap: "20px" }}>
+            {db.products.filter(p => p.isBulk && p.category === "Palm Products" && p.name.toLowerCase().includes("palm oil") && p.status === "Available").map(product => {
               const farmer = getFarmerDetails(product.farmerId);
               return (
                 <div key={product.id} className="product-card" style={{ display: "flex", flexDirection: "column" }}>
@@ -1171,6 +1193,115 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
         </div>
       )}
 
+      {activeTab === "directory" && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
+            <h3 style={{ margin: 0 }}>Business Directory</h3>
+            <span style={{ fontSize: "0.85rem", color: "var(--gray-600)" }}>Verified local companies, SMEs, and service providers</span>
+          </div>
+
+          <motion.div 
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+            className="product-grid"
+          >
+            {db.users.filter(u => u.role === "Seller").map(seller => {
+              const planColor = seller.subscriptionPlan === "Premium" 
+                ? "rgba(139, 92, 246, 0.15)" 
+                : seller.subscriptionPlan === "Pro" 
+                  ? "rgba(14, 165, 233, 0.15)" 
+                  : "rgba(156, 163, 175, 0.15)";
+              const planText = seller.subscriptionPlan || "Free";
+              const planTextColor = seller.subscriptionPlan === "Premium" 
+                ? "var(--secondary-light)" 
+                : seller.subscriptionPlan === "Pro" 
+                  ? "var(--primary-light)" 
+                  : "var(--gray-600)";
+
+              return (
+                <motion.div 
+                  key={seller.id} 
+                  variants={cardFadeIn}
+                  className="card" 
+                  style={{ display: "flex", flexDirection: "column", gap: "12px", alignItems: "center", textAlign: "center", position: "relative" }}
+                >
+                  {/* Subscription Plan Badge */}
+                  <span style={{ 
+                    position: "absolute", 
+                    top: "12px", 
+                    right: "12px", 
+                    fontSize: "0.7rem", 
+                    background: planColor, 
+                    color: planTextColor, 
+                    padding: "2px 8px", 
+                    borderRadius: "12px", 
+                    fontWeight: "bold",
+                    border: `1px solid ${planTextColor}33`
+                  }}>
+                    {planText}
+                  </span>
+
+                  <img 
+                    src={seller.avatar || "https://images.unsplash.com/photo-1542838132-92c53300491e?w=150"} 
+                    alt={seller.name} 
+                    style={{ width: "80px", height: "80px", borderRadius: "50%", objectFit: "cover", border: "3px solid var(--secondary)" }} 
+                  />
+                  <div>
+                    <h4 style={{ margin: "4px 0" }}>{seller.farmName || seller.name}</h4>
+                    <p style={{ fontSize: "0.85rem", color: "var(--gray-600)" }}>Representative: {seller.name}</p>
+                  </div>
+                  
+                  <div style={{ display: "flex", gap: "8px", justifyContent: "center", margin: "2px 0" }}>
+                    {getVerificationIcon(seller.verification)}
+                    <span style={{ fontSize: "0.8rem", display: "flex", alignItems: "center", gap: "4px", color: "var(--white)", background: "rgba(255, 255, 255, 0.05)", border: "1px solid var(--glass-border)", padding: "2px 8px", borderRadius: "10px" }}>
+                      <Star size={12} fill="var(--secondary)" color="var(--secondary)" /> {seller.rating || 5.0} ({seller.reviewsCount || 0})
+                    </span>
+                  </div>
+
+                  <p style={{ fontSize: "0.8rem", color: "var(--gray-800)" }}>
+                    📍 {seller.town}, {seller.lga} LGA
+                  </p>
+
+                  <p style={{ fontSize: "0.8rem", color: "var(--gray-600)", flex: 1, lineHeight: 1.4 }}>
+                    {seller.bio}
+                  </p>
+
+                  {seller.businessHours && (
+                    <p style={{ fontSize: "0.75rem", color: "var(--secondary-light)" }}>
+                      🕒 Hours: {seller.businessHours}
+                    </p>
+                  )}
+                  
+                  <div style={{ display: "flex", gap: "10px", width: "100%", marginTop: "12px" }}>
+                    <button 
+                      className="btn btn-outline btn-sm" 
+                      style={{ flex: 1 }}
+                      onClick={() => {
+                        if (!activeUser) {
+                          onSwitchView("auth");
+                          return;
+                        }
+                        onOpenChat(seller.id);
+                      }}
+                    >
+                      <MessageSquare size={14} /> Chat
+                    </button>
+                    <button 
+                      className="btn btn-primary btn-sm" 
+                      style={{ flex: 1.2 }}
+                      onClick={() => setSelectedFarmer(seller)}
+                    >
+                      Visit Storefront
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        </div>
+      )}
+
       {activeTab === "harvest_calendar" && (
         <motion.div 
           initial={{ opacity: 0, y: 15 }} 
@@ -1619,175 +1750,61 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
                     </div>
                   </div>
 
-                  {/* Gateway Tabs */}
-                  <div style={{ display: "flex", borderBottom: "1px solid var(--glass-border)", marginBottom: "20px" }}>
-                    <button 
-                      onClick={() => setPaymentMethod("card")}
-                      style={{ 
-                        flex: 1, 
-                        padding: "10px", 
-                        background: "none", 
-                        border: "none", 
-                        color: paymentMethod === "card" ? "var(--primary)" : "var(--gray-600)", 
-                        borderBottom: paymentMethod === "card" ? "2px solid var(--primary)" : "none",
-                        fontWeight: "bold",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "6px"
-                      }}
+                  {/* Payment Channel Selector */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px", marginTop: "12px" }}>
+                    <div 
+                      className={`card ${paymentMethod === "paystack" ? "active" : ""}`}
+                      style={{ padding: "16px", cursor: "pointer", display: "flex", alignItems: "center", gap: "12px", border: `1px solid ${paymentMethod === "paystack" ? "var(--primary)" : "var(--glass-border)"}`, background: "rgba(255,255,255,0.02)" }}
+                      onClick={() => setPaymentMethod("paystack")}
                     >
-                      <CreditCard size={16} /> Pay via Card
-                    </button>
-                    <button 
-                      onClick={() => setPaymentMethod("transfer")}
-                      style={{ 
-                        flex: 1, 
-                        padding: "10px", 
-                        background: "none", 
-                        border: "none", 
-                        color: paymentMethod === "transfer" ? "var(--primary)" : "var(--gray-600)", 
-                        borderBottom: paymentMethod === "transfer" ? "2px solid var(--primary)" : "none",
-                        fontWeight: "bold",
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "6px"
-                      }}
+                      <CreditCard size={20} style={{ color: "var(--primary-light)" }} />
+                      <div style={{ flex: 1, textAlign: "left" }}>
+                        <strong style={{ color: "white", display: "block" }}>Paystack Checkout</strong>
+                        <small style={{ color: "var(--gray-600)" }}>Secure payment via Cards, Bank Transfer, or USSD</small>
+                      </div>
+                      <input type="radio" checked={paymentMethod === "paystack"} readOnly />
+                    </div>
+
+                    <div 
+                      className={`card ${paymentMethod === "wallet" ? "active" : ""}`}
+                      style={{ padding: "16px", cursor: "pointer", display: "flex", alignItems: "center", gap: "12px", border: `1px solid ${paymentMethod === "wallet" ? "var(--primary)" : "var(--glass-border)"}`, background: "rgba(255,255,255,0.02)" }}
+                      onClick={() => setPaymentMethod("wallet")}
                     >
-                      <FileText size={16} /> Bank Transfer
-                    </button>
+                      <FileText size={20} style={{ color: "var(--secondary-light)" }} />
+                      <div style={{ flex: 1, textAlign: "left" }}>
+                        <strong style={{ color: "white", display: "block" }}>Platform Wallet Balance</strong>
+                        <small style={{ color: "var(--gray-600)" }}>Pay using your existing virtual account balance</small>
+                      </div>
+                      <input type="radio" checked={paymentMethod === "wallet"} readOnly />
+                    </div>
                   </div>
 
-                  {/* Live Credit Card Mockup */}
-                  {paymentMethod === "card" && (
-                    <div className="credit-card-container">
-                      <div className="credit-card-preview">
-                        <div className="credit-card-top">
-                          <span className="credit-card-logo">IBOM ESCROW CARD</span>
-                          <div className="credit-card-chip"></div>
-                        </div>
-                        <div className="credit-card-mid">
-                          <div className="credit-card-number">
-                            {cardNumber || "•••• •••• •••• ••••"}
-                          </div>
-                        </div>
-                        <div className="credit-card-bottom">
-                          <div>
-                            <div className="credit-card-label">Card Holder</div>
-                            <div className="credit-card-val" style={{ maxWidth: "150px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {cardName || "YOUR FULL NAME"}
-                            </div>
-                          </div>
-                          <div style={{ display: "flex", gap: "16px" }}>
-                            <div>
-                              <div className="credit-card-label">Expires</div>
-                              <div className="credit-card-val">{cardExpiry || "MM/YY"}</div>
-                            </div>
-                            <div>
-                              <div className="credit-card-label">CVV</div>
-                              <div className="credit-card-val">{cardCvc ? "•••" : "000"}</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <form onSubmit={handlePaymentSubmit}>
-                    {paymentMethod === "card" ? (
-                      <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
-                        <div className="form-grid" style={{ gridTemplateColumns: "1.2fr 0.8fr", gap: "10px", marginBottom: 0 }}>
-                          <div className="form-field">
-                            <label>Card Number *</label>
-                            <input 
-                              type="text" 
-                              placeholder="4242 •••• •••• 4242" 
-                              value={cardNumber}
-                              onChange={(e) => setCardNumber(e.target.value.replace(/\s?/g, '').replace(/(\d{4})/g, '$1 ').trim().substring(0, 19))}
-                              required 
-                            />
-                          </div>
-                          <div className="form-field">
-                            <label>Cardholder Name *</label>
-                            <input 
-                              type="text" 
-                              placeholder="E.g. Chef Bassey" 
-                              value={cardName}
-                              onChange={(e) => setCardName(e.target.value)}
-                              required 
-                            />
-                          </div>
-                        </div>
-                        <div className="form-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: 0 }}>
-                          <div className="form-field">
-                            <label>Expiry Date *</label>
-                            <input 
-                              type="text" 
-                              placeholder="MM/YY" 
-                              value={cardExpiry}
-                              onChange={(e) => setCardExpiry(e.target.value.substring(0, 5))}
-                              required 
-                            />
-                          </div>
-                          <div className="form-field">
-                            <label>CVV *</label>
-                            <input 
-                              type="password" 
-                              placeholder="•••" 
-                              value={cardCvc}
-                              onChange={(e) => setCardCvc(e.target.value.substring(0, 3))}
-                              required 
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ background: "rgba(255,255,255,0.02)", padding: "16px", borderRadius: "10px", border: "1px solid var(--glass-border)", marginBottom: "20px" }}>
-                        <small style={{ color: "var(--gray-600)", textTransform: "uppercase", fontSize: "0.7rem", fontWeight: "bold" }}>Escrow virtual Account details</small>
-                        <div style={{ marginTop: "10px" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontSize: "0.85rem" }}>
-                            <span style={{ color: "var(--gray-600)" }}>Bank Name:</span>
-                            <strong style={{ color: "white" }}>Sterling Bank (Ibom Escrow)</strong>
-                          </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontSize: "0.85rem" }}>
-                            <span style={{ color: "var(--gray-600)" }}>Account Name:</span>
-                            <strong style={{ color: "white" }}>Ibom Agro Market Escrow Ltd</strong>
-                          </div>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px dashed rgba(255,255,255,0.1)", paddingTop: "8px", marginTop: "8px" }}>
-                            <span style={{ color: "var(--gray-600)", fontSize: "0.85rem" }}>Account Number:</span>
-                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                              <strong style={{ color: "var(--primary)", fontSize: "1.15rem" }}>9032840293</strong>
-                              <button 
-                                type="button"
-                                className="icon-badge-btn" 
-                                style={{ padding: "5px", borderRadius: "6px" }}
-                                onClick={() => {
-                                  navigator.clipboard.writeText("9032840293");
-                                  alert("Account Number Copied!");
-                                }}
-                                title="Copy Account Number"
-                              >
-                                <Copy size={12} />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                        <p style={{ fontSize: "0.75rem", color: "var(--gray-600)", marginTop: "12px", lineHeight: 1.4 }}>
-                          ⚠️ Funds transferred here are securely held in cooperative escrow and are released to the farmer only when you confirm receipt of fresh produce.
-                        </p>
-                      </div>
-                    )}
-
-                    <div style={{ display: "flex", gap: "12px" }}>
-                      <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => setCurrentInvoice(null)}>Cancel</button>
-                      <button type="submit" className="btn btn-secondary" style={{ flex: 2 }}>
-                        {paymentMethod === "card" ? `Pay ₦${currentInvoice.totalAmount.toLocaleString()}` : "Confirm Bank Transfer"}
-                      </button>
-                    </div>
-                  </form>
+                  <div style={{ display: "flex", gap: "12px" }}>
+                    <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => setCurrentInvoice(null)}>Cancel</button>
+                    <button 
+                      type="button" 
+                      className="btn btn-primary" 
+                      style={{ flex: 2 }}
+                      onClick={() => {
+                        if (paymentMethod === "paystack") {
+                          setShowPaystackModal(true);
+                        } else {
+                          // Wallet processing simulation
+                          setPaymentProcessing(true);
+                          setLoadingMessage("Debiting platform wallet balance...");
+                          setTimeout(() => {
+                            setPaymentProcessing(false);
+                            const updatedDb = updateOrderStatus(currentInvoice.id, "Paid");
+                            setDb(updatedDb);
+                            setPaymentSuccess(true);
+                            window.dispatchEvent(new Event("db_update"));
+                          }, 1500);
+                        }
+                      }}
+                    >
+                      {paymentMethod === "paystack" ? "Proceed to Paystack" : "Confirm Wallet Payment"}
+                    </button>
+                  </div>
                 </>
               )}
             </motion.div>
@@ -1920,117 +1937,178 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
                 </div>
               </motion.div>
             </motion.div>
-          );
-        })()}
+          )}
 
-        {/* Farmer Detailed View Modal */}
-        {selectedFarmer && (
-          <motion.div 
-            className="modal-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
+        {/* Farmer / Seller Storefront Modal */}
+        {selectedFarmer && (() => {
+          const activeStoreProducts = db.products.filter(p => p.farmerId === selectedFarmer.id && p.status === "Available");
+          const isFollowing = selectedFarmer.followersList?.includes(activeUser?.id);
+          const isFarmer = selectedFarmer.role === "Farmer";
+
+          return (
             <motion.div 
-              className="modal-content"
-              initial={{ scale: 0.9, y: 15 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 15 }}
-              transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              className="modal-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{ zIndex: 9999 }}
             >
-              <div className="modal-header">
-                <h3>{selectedFarmer.farmName}</h3>
-                <button onClick={() => setSelectedFarmer(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "white" }}><X size={20} /></button>
-              </div>
-
-              <div style={{ position: "relative", marginBottom: "24px" }}>
-                <img src={selectedFarmer.banner} alt="" style={{ width: "100%", height: "160px", objectFit: "cover", borderRadius: "12px", border: "1px solid var(--glass-border)" }} />
-                <img 
-                  src={selectedFarmer.avatar} 
-                  alt="" 
-                  style={{ 
-                    width: "75px", 
-                    height: "75px", 
-                    borderRadius: "50%", 
-                    objectFit: "cover", 
-                    position: "absolute", 
-                    bottom: "-30px", 
-                    left: "20px",
-                    border: "3px solid var(--dark-light)",
-                    boxShadow: "0 6px 16px rgba(0,0,0,0.4)"
-                  }} 
-                />
-              </div>
-
-              <div style={{ paddingLeft: "105px", minHeight: "36px", marginBottom: "24px" }}>
-                <h4 style={{ margin: 0, fontSize: "1.35rem" }}>{selectedFarmer.name}</h4>
-                <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", marginTop: "6px" }}>
-                  {getVerificationIcon(selectedFarmer.verification)}
-                  <span style={{ fontSize: "0.8rem", color: "var(--gray-600)", background: "rgba(255,255,255,0.03)", padding: "2px 8px", borderRadius: "10px", border: "1px solid var(--glass-border)" }}>
-                    {selectedFarmer.followers} Followers
-                  </span>
+              <motion.div 
+                className="modal-content"
+                style={{ maxWidth: "600px", maxHeight: "90vh", overflowY: "auto" }}
+                initial={{ scale: 0.9, y: 15 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 15 }}
+                transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              >
+                <div className="modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h3 style={{ margin: 0 }}>{selectedFarmer.farmName || selectedFarmer.name}</h3>
+                  <button onClick={() => setSelectedFarmer(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "white" }}><X size={20} /></button>
                 </div>
-              </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "24px" }}>
-                <div className="card" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <small style={{ color: "var(--gray-600)", fontWeight: "600" }}>Years of Farming</small>
-                  <div style={{ fontSize: "1.2rem", fontWeight: "800", color: "var(--primary-light)" }}>{selectedFarmer.yearsFarming} Years</div>
-                </div>
-                <div className="card" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <small style={{ color: "var(--gray-600)", fontWeight: "600" }}>LGA / Location</small>
-                  <div style={{ fontSize: "1.2rem", fontWeight: "800", color: "var(--primary-light)" }}>{selectedFarmer.town}, {selectedFarmer.lga}</div>
-                </div>
-              </div>
-
-              <div style={{ marginBottom: "24px" }}>
-                <h5 style={{ marginBottom: "6px", fontSize: "0.95rem", color: "white" }}>Farmer Bio</h5>
-                <p style={{ fontSize: "0.88rem", color: "var(--gray-800)", lineHeight: 1.55 }}>{selectedFarmer.bio}</p>
-              </div>
-
-              {selectedFarmer.harvestCalendar && selectedFarmer.harvestCalendar.length > 0 && (
-                <div style={{ marginBottom: "28px" }}>
-                  <h5 style={{ marginBottom: "10px", fontSize: "0.95rem", color: "white" }}>Harvest Calendar Milestones</h5>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    {selectedFarmer.harvestCalendar.map(cal => (
-                      <div key={cal.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", border: "1px solid var(--glass-border)", background: "rgba(255,255,255,0.02)", borderRadius: "10px", fontSize: "0.85rem" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <Sprout size={14} style={{ color: "var(--primary-light)" }} />
-                          <span><strong style={{ color: "white" }}>{cal.product}</strong> ({cal.month})</span>
-                        </div>
-                        <span style={{ 
-                          fontSize: "0.75rem", 
-                          padding: "3px 10px", 
-                          borderRadius: "20px", 
-                          fontWeight: "bold",
-                          backgroundColor: cal.status === "Harvesting" ? "var(--secondary-bg)" : "rgba(16, 185, 129, 0.1)",
-                          color: cal.status === "Harvesting" ? "var(--secondary)" : "var(--primary)",
-                          border: `1px solid ${cal.status === "Harvesting" ? "var(--secondary)" : "var(--primary)"}`
-                        }}>
-                          {cal.status}
-                        </span>
-                      </div>
-                    ))}
+                <div style={{ position: "relative", marginBottom: "24px", marginTop: "12px" }}>
+                  <img src={selectedFarmer.banner || "https://images.unsplash.com/photo-1542838132-92c53300491e?w=800"} alt="" style={{ width: "100%", height: "140px", objectFit: "cover", borderRadius: "12px", border: "1px solid var(--glass-border)" }} />
+                  <img 
+                    src={selectedFarmer.avatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150"} 
+                    alt="" 
+                    style={{ 
+                      width: "70px", 
+                      height: "70px", 
+                      borderRadius: "50%", 
+                      objectFit: "cover", 
+                      position: "absolute", 
+                      bottom: "-30px", 
+                      left: "20px",
+                      border: "3px solid var(--dark-light)",
+                      boxShadow: "0 6px 16px rgba(0,0,0,0.4)"
+                    }} 
+                  />
+                  <div style={{ position: "absolute", bottom: "10px", right: "10px" }}>
+                    <button 
+                      className={`btn ${isFollowing ? "btn-outline" : "btn-primary"} btn-sm`}
+                      onClick={() => handleFollowStore(selectedFarmer.id)}
+                      style={{ padding: "6px 16px", borderRadius: "20px" }}
+                    >
+                      {isFollowing ? "Following" : "Follow Store"}
+                    </button>
                   </div>
                 </div>
-              )}
 
-              <div style={{ display: "flex", gap: "12px" }}>
-                <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setSelectedFarmer(null)}>Close</button>
-                <button 
-                  className="btn btn-primary" 
-                  style={{ flex: 1.5 }} 
-                  onClick={() => {
-                    onOpenChat(selectedFarmer.id);
-                    setSelectedFarmer(null);
-                  }}
-                >
-                  Start Private Chat
-                </button>
-              </div>
+                <div style={{ paddingLeft: "105px", minHeight: "36px", marginBottom: "20px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <h4 style={{ margin: 0, fontSize: "1.2rem", color: "white" }}>{selectedFarmer.name}</h4>
+                  <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+                    {getVerificationIcon(selectedFarmer.verification)}
+                    <span style={{ fontSize: "0.8rem", color: "var(--secondary-light)", background: "rgba(245, 158, 11, 0.08)", padding: "2px 8px", borderRadius: "10px", border: "1px solid rgba(245, 158, 11, 0.2)", fontWeight: "bold" }}>
+                      {selectedFarmer.followers || 0} Followers
+                    </span>
+                    {selectedFarmer.subscriptionPlan && (
+                      <span style={{ fontSize: "0.75rem", color: "var(--primary-light)", background: "rgba(16, 185, 129, 0.08)", padding: "2px 8px", borderRadius: "10px", border: "1px solid rgba(16, 185, 129, 0.2)", fontWeight: "bold" }}>
+                        {selectedFarmer.subscriptionPlan} Plan
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+                  <div className="card" style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: "2px" }}>
+                    <small style={{ color: "var(--gray-600)", fontWeight: "600" }}>{isFarmer ? "Years of Farming" : "Business Hours"}</small>
+                    <div style={{ fontSize: "1.1rem", fontWeight: "800", color: "var(--primary-light)" }}>
+                      {isFarmer ? `${selectedFarmer.yearsFarming} Years` : (selectedFarmer.businessHours || "8:00 AM - 6:00 PM")}
+                    </div>
+                  </div>
+                  <div className="card" style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: "2px" }}>
+                    <small style={{ color: "var(--gray-600)", fontWeight: "600" }}>LGA / Location</small>
+                    <div style={{ fontSize: "1.1rem", fontWeight: "800", color: "var(--primary-light)" }}>{selectedFarmer.town}, {selectedFarmer.lga}</div>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: "20px" }}>
+                  <h5 style={{ marginBottom: "6px", fontSize: "0.95rem", color: "white" }}>About Storefront</h5>
+                  <p style={{ fontSize: "0.85rem", color: "var(--gray-800)", lineHeight: 1.5, margin: 0 }}>{selectedFarmer.bio}</p>
+                </div>
+
+                {/* Active Products list */}
+                <div style={{ marginBottom: "24px" }}>
+                  <h5 style={{ marginBottom: "10px", fontSize: "0.95rem", color: "white" }}>Active Listings</h5>
+                  {activeStoreProducts.length > 0 ? (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "12px", maxHeight: "200px", overflowY: "auto", paddingRight: "4px" }}>
+                      {activeStoreProducts.map(prod => (
+                        <div 
+                          key={prod.id} 
+                          className="card" 
+                          style={{ padding: "8px", cursor: "pointer", display: "flex", flexDirection: "column", gap: "6px" }}
+                          onClick={() => {
+                            setSelectedProduct(prod);
+                            setOrderQty(prod.minOrder || 1);
+                            setSelectedFarmer(null);
+                          }}
+                        >
+                          <img src={prod.image} alt={prod.name} style={{ width: "100%", height: "80px", objectFit: "cover", borderRadius: "8px" }} />
+                          <div style={{ fontSize: "0.8rem", fontWeight: "bold", color: "white", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>{prod.name}</div>
+                          <div style={{ fontSize: "0.75rem", color: "var(--secondary-light)", fontWeight: "bold" }}>₦{prod.price.toLocaleString()}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: "0.8rem", color: "var(--gray-600)", fontStyle: "italic", margin: 0 }}>No active listings currently from this store.</p>
+                  )}
+                </div>
+
+                {isFarmer && selectedFarmer.harvestCalendar && selectedFarmer.harvestCalendar.length > 0 && (
+                  <div style={{ marginBottom: "24px" }}>
+                    <h5 style={{ marginBottom: "10px", fontSize: "0.95rem", color: "white" }}>Harvest Calendar Milestones</h5>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                      {selectedFarmer.harvestCalendar.map(cal => (
+                        <div key={cal.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", border: "1px solid var(--glass-border)", background: "rgba(255,255,255,0.02)", borderRadius: "10px", fontSize: "0.8rem" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <Sprout size={14} style={{ color: "var(--primary-light)" }} />
+                            <span><strong style={{ color: "white" }}>{cal.product}</strong> ({cal.month})</span>
+                          </div>
+                          <span style={{ 
+                            fontSize: "0.7rem", 
+                            padding: "2px 8px", 
+                            borderRadius: "20px", 
+                            fontWeight: "bold",
+                            backgroundColor: cal.status === "Harvesting" ? "var(--secondary-bg)" : "rgba(16, 185, 129, 0.1)",
+                            color: cal.status === "Harvesting" ? "var(--secondary)" : "var(--primary)",
+                            border: `1px solid ${cal.status === "Harvesting" ? "var(--secondary)" : "var(--primary)"}`
+                          }}>
+                            {cal.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                  <button className="btn btn-outline" style={{ flex: 1, minWidth: "100px" }} onClick={() => setSelectedFarmer(null)}>Close</button>
+                  {selectedFarmer.whatsapp && (
+                    <a 
+                      href={`https://wa.me/${selectedFarmer.whatsapp}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-outline"
+                      style={{ flex: 1.2, minWidth: "120px", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", textDecoration: "none", color: "var(--primary-light)", border: "1px solid var(--primary-light)" }}
+                    >
+                      <Globe size={14} /> WhatsApp
+                    </a>
+                  )}
+                  <button 
+                    className="btn btn-primary" 
+                    style={{ flex: 1.5, minWidth: "140px" }} 
+                    onClick={() => {
+                      onOpenChat(selectedFarmer.id);
+                      setSelectedFarmer(null);
+                    }}
+                  >
+                    Start Private Chat
+                  </button>
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
+          );
+        })()}
 
         {/* Review Modal Form */}
         {reviewOrder && (
@@ -2377,6 +2455,28 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
           </div>
         )}
       </AnimatePresence>
+
+      <PaystackCheckoutModal 
+        isOpen={showPaystackModal}
+        onClose={() => setShowPaystackModal(false)}
+        amount={currentInvoice ? currentInvoice.totalAmount : 0}
+        email={activeUser ? activeUser.email : "customer@ibomone.com"}
+        onSuccess={(paymentResult) => {
+          setActionLoading(true);
+          setLoadingMessage("Securing funds in IbomOne Escrow vault...");
+          setShowPaystackModal(false);
+          setTimeout(() => {
+            setActionLoading(false);
+            const updatedDb = updateOrderStatus(currentInvoice.id, "Paid");
+            setDb(updatedDb);
+            setPaymentSuccess(true);
+            window.dispatchEvent(new Event("db_update"));
+          }, 1500);
+        }}
+        onCancel={() => {
+          setShowPaystackModal(false);
+        }}
+      />
 
       {paymentProcessing && (
         <Loader3D fullScreen={true} message="Processing escrow payment gateway..." />

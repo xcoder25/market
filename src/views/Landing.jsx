@@ -87,12 +87,13 @@ export default function Landing({ onExplore, onAuthClick, db }) {
   };
 
   // Title Word-by-Word Reveal
-  const titleWords = "The Digital Food Basket of Akwa Ibom".split(" ");
+  const titleWords = "The Digital Commerce Hub of Akwa Ibom".split(" ");
+  const [searchText, setSearchText] = useState("");
 
   return (
     <div className="landing-page">
       {/* Hero Section */}
-      <section className="landing-hero">
+      <section className="landing-hero" style={{ padding: "80px 20px" }}>
         {/* Ambient Glowing background blobs */}
         <div style={{ position: "absolute", top: "10%", left: "15%", width: "250px", height: "250px", background: "radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%)", pointerEvents: "none" }}></div>
         <div style={{ position: "absolute", bottom: "10%", right: "15%", width: "300px", height: "300px", background: "radial-gradient(circle, rgba(245,158,11,0.15) 0%, transparent 70%)", pointerEvents: "none" }}></div>
@@ -101,7 +102,7 @@ export default function Landing({ onExplore, onAuthClick, db }) {
           variants={heroContainer}
           initial="hidden"
           animate="show"
-          style={{ maxWidth: "900px", zIndex: 2 }}
+          style={{ width: "100%", maxWidth: "960px", zIndex: 2, display: "flex", flexDirection: "column", alignItems: "center" }}
         >
           {/* Akwa Ibom State Logo with Floating Spring loop */}
           <motion.div
@@ -139,7 +140,7 @@ export default function Landing({ onExplore, onAuthClick, db }) {
           </div>
 
           {/* Word-by-Word Hero Title Reveal */}
-          <h1 style={{ fontSize: "clamp(2.2rem, 6vw, 4rem)", fontWeight: 900, lineHeight: 1.1, color: "white", marginBottom: "20px" }}>
+          <h1 style={{ fontSize: "clamp(2.2rem, 6vw, 4rem)", fontWeight: 900, lineHeight: 1.1, color: "white", marginBottom: "20px", textAlign: "center" }}>
             {titleWords.map((word, idx) => (
               <motion.span
                 key={idx}
@@ -148,7 +149,7 @@ export default function Landing({ onExplore, onAuthClick, db }) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.08 + 0.3, type: "spring", stiffness: 120 }}
               >
-                {word === "Akwa" || word === "Ibom" ? (
+                {word === "Commerce" || word === "Hub" ? (
                   <span style={{ color: "var(--primary)", textShadow: "0 0 20px rgba(16, 185, 129, 0.3)" }}>{word}</span>
                 ) : (
                   word
@@ -159,28 +160,65 @@ export default function Landing({ onExplore, onAuthClick, db }) {
 
           <motion.p
             variants={heroItem}
-            style={{ fontSize: "clamp(1rem, 2vw, 1.25rem)", color: "var(--gray-600)", maxWidth: "750px", margin: "0 auto 36px auto", lineHeight: 1.5 }}
+            style={{ fontSize: "clamp(1rem, 2vw, 1.25rem)", color: "var(--gray-600)", maxWidth: "750px", margin: "0 auto 28px auto", lineHeight: 1.5, textAlign: "center" }}
           >
-            Connecting local smallholder farmers from Uyo to Eket directly with hotels, chefs, retail buyers, and logistics carriers in realtime. Transparent prices, secure escrow, fresh harvests.
+            Find products, hire services, rent property, order native delicacies, and discover local businesses across all 31 LGAs of Akwa Ibom. Secured by platform escrow, backed by trusted logistics.
           </motion.p>
+
+          {/* Search anything in Akwa Ibom */}
+          <motion.div 
+            variants={heroItem}
+            style={{ position: "relative", width: "100%", maxWidth: "600px", margin: "0 auto 30px auto", zIndex: 10 }}
+          >
+            <input 
+              type="text" 
+              placeholder="Search anything in Akwa Ibom (e.g. palm oil, apartment, mechanic, iPhone)..." 
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              style={{ 
+                width: "100%", 
+                padding: "16px 120px 16px 20px", 
+                borderRadius: "30px", 
+                border: "1px solid var(--glass-border)", 
+                background: "rgba(255, 255, 255, 0.03)", 
+                color: "white", 
+                fontSize: "1rem",
+                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
+                backdropFilter: "blur(12px)",
+                outline: "none"
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  onExplore(searchText);
+                }
+              }}
+            />
+            <button 
+              className="btn btn-primary"
+              style={{ position: "absolute", right: "6px", top: "6px", borderRadius: "24px", padding: "10px 24px", fontSize: "0.9rem" }}
+              onClick={() => onExplore(searchText)}
+            >
+              Search
+            </button>
+          </motion.div>
 
           <motion.div
             variants={heroItem}
-            style={{ display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap" }}
+            style={{ display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap", marginBottom: "40px" }}
           >
             <motion.button
               className="btn btn-primary"
-              onClick={onExplore}
-              style={{ padding: "14px 32px" }}
+              onClick={() => onExplore("")}
+              style={{ padding: "12px 28px" }}
               whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(16, 185, 129, 0.4)" }}
               whileTap={{ scale: 0.95 }}
             >
-              Explore Marketplace <ArrowRight size={18} style={{ marginLeft: "4px" }} />
+              Browse Marketplace <ArrowRight size={18} style={{ marginLeft: "4px" }} />
             </motion.button>
             <motion.button
               className="btn btn-outline"
               onClick={onAuthClick}
-              style={{ padding: "14px 32px" }}
+              style={{ padding: "12px 28px" }}
               whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.05)" }}
               whileTap={{ scale: 0.95 }}
             >
@@ -188,22 +226,74 @@ export default function Landing({ onExplore, onAuthClick, db }) {
             </motion.button>
           </motion.div>
 
+          {/* 7 Core Categories Quick Links */}
+          <motion.div
+            variants={heroItem}
+            style={{ 
+              display: "grid", 
+              gridTemplateColumns: "repeat(auto-fit, minmax(115px, 1fr))", 
+              gap: "12px", 
+              width: "100%",
+              marginTop: "10px"
+            }}
+          >
+            {[
+              { id: "listings", query: "", label: "🌾 Agro Market", color: "rgba(16, 185, 129, 0.1)" },
+              { id: "listings", query: "buy", label: "🛒 Buy & Sell", color: "rgba(14, 165, 233, 0.1)" },
+              { id: "listings", query: "property", label: "🏠 Property", color: "rgba(245, 158, 11, 0.1)" },
+              { id: "listings", query: "vehicles", label: "🚗 Vehicles", color: "rgba(239, 68, 68, 0.1)" },
+              { id: "listings", query: "food", label: "🍲 Food Market", color: "rgba(236, 72, 153, 0.1)" },
+              { id: "listings", query: "services", label: "👷 Services Hub", color: "rgba(139, 92, 246, 0.1)" },
+              { id: "directory", query: "", label: "🏢 Directory", color: "rgba(107, 114, 128, 0.1)" }
+            ].map(cat => (
+              <motion.div
+                key={cat.label}
+                whileHover={{ scale: 1.05, y: -4, background: "rgba(255, 255, 255, 0.08)", border: "1px solid var(--primary-light)" }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => {
+                  if (cat.id === "directory") {
+                    onExplore("", "directory");
+                  } else if (cat.label.includes("Agro")) {
+                    onExplore("", "listings");
+                  } else {
+                    onExplore(cat.query, "listings");
+                  }
+                }}
+                style={{
+                  background: cat.color,
+                  border: "1px solid var(--glass-border)",
+                  borderRadius: "14px",
+                  padding: "16px 8px",
+                  cursor: "pointer",
+                  textAlign: "center",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px"
+                }}
+              >
+                <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "white" }}>{cat.label}</span>
+              </motion.div>
+            ))}
+          </motion.div>
+
           {/* Quick Platform Metrics */}
           <motion.div
             variants={heroItem}
-            style={{ display: "flex", gap: "20px", justifyContent: "center", marginTop: "60px", borderTop: "1px solid var(--glass-border)", paddingTop: "28px", flexWrap: "wrap" }}
+            style={{ display: "flex", gap: "20px", justifyContent: "center", marginTop: "50px", borderTop: "1px solid var(--glass-border)", paddingTop: "24px", flexWrap: "wrap", width: "100%" }}
           >
             <div style={{ flex: "1 1 120px" }}>
               <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "var(--primary)" }}>{activeFarmersCount}+</div>
-              <div style={{ fontSize: "0.8rem", color: "var(--gray-600)" }}>Verified Farmers</div>
+              <div style={{ fontSize: "0.8rem", color: "var(--gray-600)" }}>Verified Sellers</div>
             </div>
             <div style={{ flex: "1 1 120px", borderLeft: "1px solid var(--glass-border)", paddingLeft: "10px" }}>
-              <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "var(--secondary-light)" }}>Realtime</div>
-              <div style={{ fontSize: "0.8rem", color: "var(--gray-600)" }}>Escrow Protection</div>
+              <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "var(--secondary-light)" }}>Escrow</div>
+              <div style={{ fontSize: "0.8rem", color: "var(--gray-600)" }}>Protected Purchases</div>
             </div>
             <div style={{ flex: "1 1 120px", borderLeft: "1px solid var(--glass-border)", paddingLeft: "10px" }}>
-              <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "white" }}>{marketPriceCount}+</div>
-              <div style={{ fontSize: "0.8rem", color: "var(--gray-600)" }}>Daily Commodities</div>
+              <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "white" }}>7 Verticals</div>
+              <div style={{ fontSize: "0.8rem", color: "var(--gray-600)" }}>One Ecosystem</div>
             </div>
           </motion.div>
         </motion.div>
@@ -255,10 +345,10 @@ export default function Landing({ onExplore, onAuthClick, db }) {
         <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
           <div className="section-header">
             <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(245, 158, 11, 0.12)", border: "1px solid rgba(245, 158, 11, 0.2)", borderRadius: "30px", padding: "4px 12px", marginBottom: "16px", fontSize: "0.8rem", color: "var(--secondary-light)" }}>
-              <Sparkles size={14} /> Simplified Logistics
+              <Sparkles size={14} /> Ecosystem Mechanics
             </div>
-            <h2>How Ibom Agro Market Works</h2>
-            <p>Our platform closes the gap between the farm gate and the dining table in three simple steps.</p>
+            <h2>How IbomOne Works</h2>
+            <p>Our platform connects buyers, sellers, and logistics partners in three simple steps.</p>
           </div>
 
           <div className="how-it-works-grid">
@@ -267,8 +357,8 @@ export default function Landing({ onExplore, onAuthClick, db }) {
               <div className="step-icon-wrapper">
                 <Award size={24} />
               </div>
-              <h3>Farmers List Harvests</h3>
-              <p>Verified farmers list their crops, set quantity limits, select harvest dates, and upload real pictures of produce right from the farm.</p>
+              <h3>Sellers List Storefronts</h3>
+              <p>Verified businesses, farmers, property agents, and service professionals create digital storefronts, list inventory, and configure business details.</p>
             </div>
 
             <div className="step-card">
@@ -277,7 +367,7 @@ export default function Landing({ onExplore, onAuthClick, db }) {
                 <ShoppingBag size={24} />
               </div>
               <h3>Buyers Order Securely</h3>
-              <p>Chefs, hotels, and retail buyers purchase produce with funds safely secured in Escrow. Funds are released only upon satisfactory delivery.</p>
+              <p>Customers place orders or book services using Escrow protection. Funds are secured safely until goods are delivered or jobs are completed.</p>
             </div>
 
             <div className="step-card">
@@ -285,8 +375,8 @@ export default function Landing({ onExplore, onAuthClick, db }) {
               <div className="step-icon-wrapper">
                 <Navigation size={24} />
               </div>
-              <h3>Logistics Delivers Direct</h3>
-              <p>Registered logistics riders claim delivery jobs in real-time, pick up fresh produce from farm gates, and transport them securely to buyers.</p>
+              <h3>Logistics & Delivery Matches</h3>
+              <p>Verified logistics carriers claim deliveries, matching orders with vehicle types (bikes, kekes, or heavy trucks) to ensure prompt delivery.</p>
             </div>
           </div>
         </div>

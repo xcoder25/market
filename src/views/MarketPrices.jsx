@@ -32,7 +32,7 @@ export default function MarketPrices() {
     <div className="market-prices-page card">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
         <div>
-          <h2>Akwa Ibom Market Price Index</h2>
+          <h2>IbomOne Commodity Price Index</h2>
           <p style={{ color: "var(--gray-600)" }}>Compare commodity pricing across Eket, Itam, Akpan Andem, and Ikot Ekpene. Sourced daily by administrative market superintendents.</p>
         </div>
         <button onClick={() => setDb(getDB())} className="icon-badge-btn"><RefreshCw size={16} /></button>

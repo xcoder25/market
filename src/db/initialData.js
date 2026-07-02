@@ -18,14 +18,79 @@ export const AKWA_IBOM_LOCATIONS = [
   { lga: "Ikot Abasi", towns: ["Ikot Abasi Town", "Uta Ewa", "Edemaya", "Ikpa Ibekwe"] }
 ];
 
+export const VERTICALS = {
+  Agro: {
+    label: "Agro Marketplace",
+    icon: "🌾",
+    categories: ["Crops", "Fish", "Poultry", "Livestock", "Palm Products", "Fertilizer & Equip"]
+  },
+  BuySell: {
+    label: "Buy & Sell",
+    icon: "🛒",
+    categories: ["Electronics", "Fashion", "Furniture", "Phones", "Computers", "Gaming"]
+  },
+  Property: {
+    label: "Property",
+    icon: "🏠",
+    categories: ["Land", "Houses", "Apartments", "Commercial"]
+  },
+  Vehicles: {
+    label: "Vehicles",
+    icon: "🚗",
+    categories: ["Cars", "Motorcycles", "Trucks", "Parts & Accessories"]
+  },
+  Food: {
+    label: "Food Marketplace",
+    icon: "🍲",
+    categories: ["Restaurants", "Home Kitchens", "Catering"]
+  },
+  Services: {
+    label: "Services",
+    icon: "👷",
+    categories: ["Mechanics", "Electricians", "Plumbers", "Home Repairs", "Media"]
+  }
+};
+
 export const CATEGORIES = {
+  // Agro
   Crops: ["Cassava", "Yam", "Rice", "Maize", "Beans", "Tomatoes", "Pepper", "Onion", "Vegetables", "Plantain", "Banana"],
   Fish: ["Catfish", "Tilapia", "Croaker", "Smoked Fish"],
   Poultry: ["Broilers", "Layers", "Eggs", "Turkey"],
   Livestock: ["Goat", "Pig", "Cow", "Sheep"],
   "Palm Products": ["Palm Oil", "Palm Kernel", "Palm Fruit"],
-  "Processed Products": ["Garri", "Fufu", "Starch", "Flour"],
-  Fruits: ["Pineapple", "Mango", "Orange", "Coconut"]
+  "Fertilizer & Equip": ["Fertilizer", "Seedlings", "Tractor", "Irrigation"],
+  
+  // Buy & Sell
+  Electronics: ["TV", "Audio", "Cameras", "Accessories"],
+  Fashion: ["Men", "Women", "Shoes", "Bags"],
+  Furniture: ["Chairs", "Tables", "Beds", "Sofas"],
+  Phones: ["Smartphones", "Tablets", "Chargers"],
+  Computers: ["Laptops", "Desktops", "Printers"],
+  Gaming: ["Consoles", "Video Games", "Controllers"],
+  
+  // Property
+  Land: ["Residential Plot", "Commercial Land", "Farmland"],
+  Houses: ["Duplex", "Bungalow", "Terrace"],
+  Apartments: ["Self Contain", "1 Bedroom", "2 Bedroom", "3 Bedroom"],
+  Commercial: ["Shops", "Offices", "Hostels", "Warehouses", "Short Lets"],
+  
+  // Vehicles
+  Cars: ["Sedan", "SUV", "Hatchback"],
+  Motorcycles: ["Okada", "Keke Napep", "Power Bike"],
+  Trucks: ["Pickup", "Trailer", "Dumper"],
+  "Parts & Accessories": ["Tyres", "Engine", "Brakes", "Batteries"],
+  
+  // Food
+  Restaurants: ["Local Joint", "Fast Food", "Fine Dining"],
+  "Home Kitchens": ["Soup Pots", "Lunch Boxes"],
+  Catering: ["Event Catering", "Baking & Cakes"],
+  
+  // Services
+  Mechanics: ["Car Mechanic", "Bike Mechanic", "Truck Mechanic"],
+  Electricians: ["Home Wiring", "Appliance Repair"],
+  Plumbers: ["Pipes & Drainage", "Borehole Drilling"],
+  "Home Repairs": ["Carpenter", "Tailor", "Hairdresser", "AC Repairs"],
+  Media: ["Photographers", "Videographers"]
 };
 
 export const INITIAL_USERS = [
@@ -226,6 +291,116 @@ export const INITIAL_USERS = [
     rating: 4.9,
     reviewsCount: 34,
     status: "Available"
+  },
+  {
+    id: "s1",
+    name: "Akpan Digital",
+    phone: "08011111111",
+    email: "akpan@digitalplaza.ng",
+    role: "Seller",
+    state: "Akwa Ibom",
+    lga: "Uyo",
+    town: "Uyo Town",
+    address: "22 Ikot Ekpene Road, Uyo",
+    farmName: "Akpan Digital Storefront",
+    bio: "Akwa Ibom's premium outlet for smartphones, tablets, and gaming accessories. Fast testing, verified products, and platform escrow delivery.",
+    verification: "Gold",
+    subscriptionPlan: "Premium",
+    followers: 142,
+    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150",
+    banner: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=800",
+    rating: 4.8,
+    reviewsCount: 38,
+    whatsapp: "2348011111111",
+    businessHours: "8:00 AM - 6:00 PM"
+  },
+  {
+    id: "s2",
+    name: "Kufre Estates Ltd",
+    phone: "08022222222",
+    email: "inquiries@kufreestates.com",
+    role: "Seller",
+    state: "Akwa Ibom",
+    lga: "Uyo",
+    town: "Uyo Town",
+    address: "50 Oron Road, Uyo",
+    farmName: "Kufre Luxury Estates",
+    bio: "Top-tier real estate agent and property managers in Akwa Ibom. Specializing in lands, apartments, and commercial leasing.",
+    verification: "Gold",
+    subscriptionPlan: "Pro",
+    followers: 89,
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
+    banner: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800",
+    rating: 4.9,
+    reviewsCount: 22,
+    whatsapp: "2348022222222",
+    businessHours: "8:30 AM - 5:30 PM"
+  },
+  {
+    id: "s3",
+    name: "Oron Auto Yard",
+    phone: "08033333333",
+    email: "sales@oronautodealer.com",
+    role: "Seller",
+    state: "Akwa Ibom",
+    lga: "Oron",
+    town: "Oron Town",
+    address: "15 Marine Avenue, Oron",
+    farmName: "Oron Auto Dealers",
+    bio: "Direct importers of clean European and American Tokunbo cars, light trucks, and genuine motorcycle spare parts.",
+    verification: "Silver",
+    subscriptionPlan: "Free",
+    followers: 67,
+    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
+    banner: "https://images.unsplash.com/photo-1506015391300-4802dc74de2e?w=800",
+    rating: 4.5,
+    reviewsCount: 16,
+    whatsapp: "2348033333333",
+    businessHours: "8:00 AM - 6:00 PM"
+  },
+  {
+    id: "s4",
+    name: "Chef Bassey Kitchen",
+    phone: "07039876543",
+    email: "bassey.kitchen@cook.ng",
+    role: "Seller",
+    state: "Akwa Ibom",
+    lga: "Uyo",
+    town: "Itam",
+    address: "42 Oron Road, Uyo",
+    farmName: "Chef Bassey's Native Pots",
+    bio: "Akwa Ibom standard kitchen. Specializing in Edikang Ikong, Afang, Ekpang Nkukwo, and catering pots for all event sizes.",
+    verification: "Gold",
+    subscriptionPlan: "Premium",
+    followers: 412,
+    avatar: "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=150",
+    banner: "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=800",
+    rating: 5.0,
+    reviewsCount: 92,
+    whatsapp: "2347039876543",
+    businessHours: "9:00 AM - 10:00 PM"
+  },
+  {
+    id: "s5",
+    name: "Ubong Tech Repairs",
+    phone: "08055555555",
+    email: "repairs@ubongtech.ng",
+    role: "Seller",
+    state: "Akwa Ibom",
+    lga: "Eket",
+    town: "Eket Town",
+    address: "9 Grace Bill Road, Eket",
+    farmName: "Ubong Handyman Services",
+    bio: "Fast and reliable electrical installations, plumbing repairs, borehole maintenance, and refrigerator repairs across Eket and Uyo.",
+    verification: "Silver",
+    subscriptionPlan: "Pro",
+    followers: 55,
+    avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150",
+    banner: "https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800",
+    rating: 4.7,
+    reviewsCount: 19,
+    whatsapp: "2348055555555",
+    businessHours: "8:00 AM - 8:00 PM"
   },
 
   // Admins
@@ -728,6 +903,166 @@ export const INITIAL_PRODUCTS = [
     town: "Idu",
     status: "Available",
     image: "https://images.unsplash.com/photo-1628773822503-930a8585e825?w=500"
+  },
+  {
+    id: "p25",
+    farmerId: "s1",
+    name: "iPhone 13 Pro Max (128GB, Tokunbo)",
+    category: "Phones",
+    subcategory: "Smartphones",
+    description: "Extremely clean UK used iPhone 13 Pro Max. Battery health 88%+, Face ID active, never repaired. Includes original cable and warranty receipt.",
+    price: 380000,
+    unit: "Unit",
+    quantity: 8,
+    minOrder: 1,
+    harvestDate: "2026-07-02",
+    organic: false,
+    deliveryAvailable: true,
+    location: "Uyo Town",
+    lga: "Uyo",
+    town: "Uyo Town",
+    status: "Available",
+    image: "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=500"
+  },
+  {
+    id: "p26",
+    farmerId: "s1",
+    name: "Senator Traditional Men's Suit",
+    category: "Fashion",
+    subcategory: "Men",
+    description: "Premium Senator Kaftan with precise embroidery and tailoring. Fabric is high-grade cash-wool, breathable and perfect for events.",
+    price: 35000,
+    unit: "Set",
+    quantity: 25,
+    minOrder: 1,
+    harvestDate: "2026-07-02",
+    organic: false,
+    deliveryAvailable: true,
+    location: "Uyo Town",
+    lga: "Uyo",
+    town: "Uyo Town",
+    status: "Available",
+    image: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=500"
+  },
+  {
+    id: "p27",
+    farmerId: "s2",
+    name: "2-Bedroom Luxury Serviced Apartment",
+    category: "Apartments",
+    subcategory: "2 Bedroom",
+    description: "Newly built and fully serviced 2-bedroom flat in a secure estate in Mbiabong, Uyo. Constant power, security guards, prepaid meter, water treatment.",
+    price: 800000,
+    unit: "Year",
+    quantity: 4,
+    minOrder: 1,
+    harvestDate: "2026-07-01",
+    organic: false,
+    deliveryAvailable: false,
+    location: "Mbiabong",
+    lga: "Uyo",
+    town: "Mbiabong",
+    status: "Available",
+    image: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=500"
+  },
+  {
+    id: "p28",
+    farmerId: "s2",
+    name: "Fenced Plot of Commercial Land",
+    category: "Land",
+    subcategory: "Commercial Land",
+    description: "Fenced and gated prime commercial plot of land directly along Ikot Abasi highway. Registered survey plan, power allocation grid nearby, high foot traffic.",
+    price: 3500000,
+    unit: "Plot",
+    quantity: 1,
+    minOrder: 1,
+    harvestDate: "2026-06-30",
+    organic: false,
+    deliveryAvailable: false,
+    location: "Ikot Abasi Town",
+    lga: "Ikot Abasi",
+    town: "Ikot Abasi Town",
+    status: "Available",
+    image: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=500"
+  },
+  {
+    id: "p29",
+    farmerId: "s3",
+    name: "Toyota Camry 2012 (Tokunbo)",
+    category: "Cars",
+    subcategory: "Sedan",
+    description: "Direct American used Toyota Camry SE 2012 model. Clean fabric seats, low mileage, freezing AC, gear/engine in perfect condition. Buy and drive.",
+    price: 4800000,
+    unit: "Car",
+    quantity: 2,
+    minOrder: 1,
+    harvestDate: "2026-07-02",
+    organic: false,
+    deliveryAvailable: true,
+    location: "Oron Town",
+    lga: "Oron",
+    town: "Oron Town",
+    status: "Available",
+    image: "https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=500"
+  },
+  {
+    id: "p30",
+    farmerId: "s3",
+    name: "Suzuki Power Motorcycle (New)",
+    category: "Motorcycles",
+    subcategory: "Power Bike",
+    description: "Brand new Suzuki power bike motorcycle. 125cc fuel-efficient engine, double exhaust, shock absorbers built for local roads, complete customs papers.",
+    price: 850000,
+    unit: "Unit",
+    quantity: 5,
+    minOrder: 1,
+    harvestDate: "2026-07-01",
+    organic: false,
+    deliveryAvailable: true,
+    location: "Oron Town",
+    lga: "Oron",
+    town: "Oron Town",
+    status: "Available",
+    image: "https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=500"
+  },
+  {
+    id: "p31",
+    farmerId: "s4",
+    name: "Authentic Edikang Ikong Soup Pot (3L)",
+    category: "Home Kitchens",
+    subcategory: "Soup Pots",
+    description: "Large 3-liter catering pot of authentic Akwa Ibom Edikang Ikong soup. Prepared with organic waterleaf, Ugu, premium beef, snails, Kanda, and Oron crayfish.",
+    price: 18000,
+    unit: "Pot (3L)",
+    quantity: 10,
+    minOrder: 1,
+    harvestDate: "2026-07-02",
+    organic: true,
+    deliveryAvailable: true,
+    location: "Itam",
+    lga: "Uyo",
+    town: "Itam",
+    status: "Available",
+    image: "https://images.unsplash.com/photo-1544025162-d76694265947?w=500"
+  },
+  {
+    id: "p32",
+    farmerId: "s5",
+    name: "Ubong Emergency Car Mechanical Service",
+    category: "Mechanics",
+    subcategory: "Car Mechanic",
+    description: "On-demand emergency automotive diagnostic, engine repairs, brake repairs, and wiring checks. Sourced at Eket and Uyo city limits.",
+    price: 15000,
+    unit: "Service Call",
+    quantity: 1,
+    minOrder: 1,
+    harvestDate: "2026-07-02",
+    organic: false,
+    deliveryAvailable: true,
+    location: "Eket Town",
+    lga: "Eket",
+    town: "Eket Town",
+    status: "Available",
+    image: "https://images.unsplash.com/photo-1486006920555-c77dce18193b?w=500"
   }
 ];
 
@@ -858,4 +1193,17 @@ export const INITIAL_AUDIT_LOGS = [
   { id: "al-1", timestamp: "2026-06-28T08:00:00Z", action: "User Registered", details: "Etim Okon registered as Farmer in Uyo/Itam" },
   { id: "al-2", timestamp: "2026-06-28T08:30:00Z", action: "Verification Changed", details: "Etim Okon verification status upgraded to GOLD by Admin" },
   { id: "al-3", timestamp: "2026-06-28T09:00:00Z", action: "Product Added", details: "Etim Okon uploaded White Garri listing" }
+];
+
+export const INITIAL_SUBSCRIPTION_PAYMENTS = [
+  { id: "sub-1", companyId: "f1", name: "Etim Okon", plan: "Pro", amount: 15000, date: "2026-06-25", status: "Active" },
+  { id: "sub-2", companyId: "f3", name: "Imaobong Effiong", plan: "Premium", amount: 35000, date: "2026-06-28", status: "Active" },
+  { id: "sub-3", companyId: "s1", name: "Akpan Digital", plan: "Premium", amount: 35000, date: "2026-07-01", status: "Active" },
+  { id: "sub-4", companyId: "s2", name: "Kufre Estates Ltd", plan: "Pro", amount: 15000, date: "2026-06-30", status: "Active" }
+];
+
+export const INITIAL_AD_PAYMENTS = [
+  { id: "ad-1", companyId: "f1", name: "Etim Okon", type: "Homepage Banner", amount: 12000, date: "2026-06-26" },
+  { id: "ad-2", companyId: "s3", name: "Oron Auto Yard", type: "Sponsored Search", amount: 5000, date: "2026-07-01" },
+  { id: "ad-3", companyId: "s4", name: "Chef Bassey Kitchen", type: "Category Banner", amount: 8000, date: "2026-07-02" }
 ];

@@ -57,8 +57,20 @@ export default function AdminDashboard() {
 
   const farmers = db.users.filter(u => u.role === "Farmer");
   const buyers = db.users.filter(u => u.role === "Buyer");
+  const sellers = db.users.filter(u => u.role === "Seller");
   const logistics = db.users.filter(u => u.role === "Logistics Partner");
   const totalSales = db.orders.reduce((sum, o) => sum + o.totalAmount, 0);
+
+  const totalSubRevenue = (db.subscriptionPayments || []).reduce((sum, p) => sum + p.amount, 0);
+  const totalAdRevenue = (db.adPayments || []).reduce((sum, p) => sum + p.amount, 0);
+  const totalEscrowComm = db.orders.reduce((sum, o) => sum + (o.escrowFee || 0), 0);
+  const totalLogisticsComm = db.orders.filter(o => o.deliveryStatus === "Delivered").reduce((sum, o) => sum + Math.round((o.deliveryFee || 2500) * 0.05), 0);
+
+  const totalPlatformRevenue = totalSubRevenue + totalAdRevenue + totalEscrowComm + totalLogisticsComm;
+
+  const activeProCount = db.users.filter(u => u.subscriptionPlan === "Pro").length;
+  const activePremiumCount = db.users.filter(u => u.subscriptionPlan === "Premium").length;
+  const currentMRR = (activeProCount * 15000) + (activePremiumCount * 35000);
 
   // Framer Motion variants
   const staggerContainer = {
@@ -79,6 +91,12 @@ export default function AdminDashboard() {
           <p style={{ color: "var(--gray-600)" }}>Manage users, verify farmers, update daily market indices, and audit system actions.</p>
         </div>
         <div className="dashboard-tabs">
+          <button 
+            className={`tab-pill ${activeTab === "revenue" ? "active" : ""}`}
+            onClick={() => setActiveTab("revenue")}
+          >
+            MRR & Revenue
+          </button>
           <button 
             className={`tab-pill ${activeTab === "verifications" ? "active" : ""}`}
             onClick={() => setActiveTab("verifications")}
@@ -152,6 +170,129 @@ export default function AdminDashboard() {
       </motion.div>
 
       <AnimatePresence mode="wait">
+        {activeTab === "revenue" && (
+          <motion.div 
+            key="revenue"
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.2 }}
+            className="card" 
+            style={{ marginTop: "24px", display: "flex", flexDirection: "column", gap: "24px" }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--glass-border)", paddingBottom: "12px" }}>
+              <h3 style={{ margin: 0, color: "white" }}>MRR & Platform Revenue Operations</h3>
+              <span style={{ fontSize: "0.85rem", color: "var(--gray-600)" }}>Escrow commissions, ad sales, and merchant subscriptions</span>
+            </div>
+
+            {/* Top Stat Blocks */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "20px" }}>
+              <div className="card" style={{ background: "linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(99, 102, 241, 0.2) 100%)", border: "1px solid rgba(139, 92, 246, 0.3)", padding: "20px" }}>
+                <small style={{ color: "var(--gray-600)", fontWeight: "bold", textTransform: "uppercase" }}>Monthly Recurring Revenue (MRR)</small>
+                <h2 style={{ fontSize: "2.2rem", fontWeight: "900", margin: "8px 0", color: "white" }}>₦{currentMRR.toLocaleString()}</h2>
+                <div style={{ fontSize: "0.85rem", color: "var(--gray-800)" }}>
+                  Pro: <strong>{activeProCount}</strong> (₦15k) | Premium: <strong>{activePremiumCount}</strong> (₦35k)
+                </div>
+              </div>
+
+              <div className="card" style={{ background: "linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.2) 100%)", border: "1px solid rgba(16, 185, 129, 0.3)", padding: "20px" }}>
+                <small style={{ color: "var(--gray-600)", fontWeight: "bold", textTransform: "uppercase" }}>Net Accumulated Earnings</small>
+                <h2 style={{ fontSize: "2.2rem", fontWeight: "900", margin: "8px 0", color: "var(--primary-light)" }}>₦{totalPlatformRevenue.toLocaleString()}</h2>
+                <div style={{ fontSize: "0.85rem", color: "var(--gray-800)" }}>
+                  Gross platform sales: ₦{totalSales.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {/* Breakdown Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
+              <div className="card" style={{ padding: "16px" }}>
+                <small style={{ color: "var(--gray-600)" }}>Subscription Billings</small>
+                <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "white", marginTop: "4px" }}>₦{totalSubRevenue.toLocaleString()}</div>
+              </div>
+              <div className="card" style={{ padding: "16px" }}>
+                <small style={{ color: "var(--gray-600)" }}>Sponsored Ads</small>
+                <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "white", marginTop: "4px" }}>₦{totalAdRevenue.toLocaleString()}</div>
+              </div>
+              <div className="card" style={{ padding: "16px" }}>
+                <small style={{ color: "var(--gray-600)" }}>Escrow Fees (3%)</small>
+                <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "white", marginTop: "4px" }}>₦{totalEscrowComm.toLocaleString()}</div>
+              </div>
+              <div className="card" style={{ padding: "16px" }}>
+                <small style={{ color: "var(--gray-600)" }}>Logistics Cut (5%)</small>
+                <div style={{ fontSize: "1.4rem", fontWeight: "bold", color: "white", marginTop: "4px" }}>₦{totalLogisticsComm.toLocaleString()}</div>
+              </div>
+            </div>
+
+            {/* Transactions & Subscription Ledgers */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", gap: "20px", marginTop: "12px" }}>
+              {/* Subscriptions */}
+              <div className="card" style={{ padding: "20px" }}>
+                <h4 style={{ color: "white", marginBottom: "16px", borderBottom: "1px solid var(--glass-border)", paddingBottom: "8px" }}>Active Subscriptions</h4>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid var(--glass-border)", color: "var(--gray-600)", textAlign: "left" }}>
+                        <th style={{ padding: "8px" }}>Merchant</th>
+                        <th style={{ padding: "8px" }}>Plan</th>
+                        <th style={{ padding: "8px" }}>Amount</th>
+                        <th style={{ padding: "8px" }}>Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(db.subscriptionPayments || []).map((sub, i) => (
+                        <tr key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                          <td style={{ padding: "8px", fontWeight: "bold", color: "white" }}>{sub.name}</td>
+                          <td style={{ padding: "8px" }}><span style={{ padding: "2px 6px", borderRadius: "8px", background: "rgba(139,92,246,0.1)", color: "var(--primary-light)", fontSize: "0.75rem", fontWeight: "bold" }}>{sub.plan}</span></td>
+                          <td style={{ padding: "8px", color: "var(--secondary-light)" }}>₦{sub.amount.toLocaleString()}</td>
+                          <td style={{ padding: "8px", color: "var(--gray-800)" }}>{sub.date}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Sponsored Ads */}
+              <div className="card" style={{ padding: "20px" }}>
+                <h4 style={{ color: "white", marginBottom: "16px", borderBottom: "1px solid var(--glass-border)", paddingBottom: "8px" }}>Ad Campaign Billings</h4>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid var(--glass-border)", color: "var(--gray-600)", textAlign: "left" }}>
+                        <th style={{ padding: "8px" }}>Advertiser</th>
+                        <th style={{ padding: "8px" }}>Ad Slot</th>
+                        <th style={{ padding: "8px" }}>Budget</th>
+                        <th style={{ padding: "8px" }}>Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(db.adPayments || []).map((ad, i) => (
+                        <tr key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                          <td style={{ padding: "8px", fontWeight: "bold", color: "white" }}>{ad.name}</td>
+                          <td style={{ padding: "8px", color: "var(--gray-600)" }}>{ad.type}</td>
+                          <td style={{ padding: "8px", color: "var(--secondary-light)" }}>₦{ad.amount.toLocaleString()}</td>
+                          <td style={{ padding: "8px", color: "var(--gray-800)" }}>{ad.date}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Platform Demographics */}
+            <div className="card" style={{ padding: "16px" }}>
+              <h4 style={{ color: "white", marginBottom: "12px", fontSize: "0.95rem" }}>Ecosystem Registered Users:</h4>
+              <div style={{ display: "flex", gap: "24px", flexWrap: "wrap", fontSize: "0.9rem" }}>
+                <div>Buyers: <strong style={{ color: "white" }}>{buyers.length}</strong></div>
+                <div>Farmers: <strong style={{ color: "white" }}>{farmers.length}</strong></div>
+                <div>Sellers/Businesses: <strong style={{ color: "white" }}>{sellers.length}</strong></div>
+                <div>Logistics Partners: <strong style={{ color: "white" }}>{logistics.length}</strong></div>
+              </div>
+            </div>
+          </motion.div>
+        )}
         {activeTab === "verifications" && (
           <motion.div 
             key="verifications"

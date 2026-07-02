@@ -1,18 +1,21 @@
 import {
   AKWA_IBOM_LOCATIONS,
   CATEGORIES,
+  VERTICALS,
   INITIAL_USERS,
   INITIAL_PRODUCTS,
   INITIAL_MARKET_PRICES,
   INITIAL_ORDERS,
   INITIAL_MESSAGES,
   INITIAL_NOTIFICATIONS,
-  INITIAL_AUDIT_LOGS
+  INITIAL_AUDIT_LOGS,
+  INITIAL_SUBSCRIPTION_PAYMENTS,
+  INITIAL_AD_PAYMENTS
 } from "./initialData";
 import { doc, setDoc } from "firebase/firestore";
 import { db as firestoreDb, isConfigured } from "../lib/firebase";
 
-export { AKWA_IBOM_LOCATIONS, CATEGORIES };
+export { AKWA_IBOM_LOCATIONS, CATEGORIES, VERTICALS };
 
 const STORAGE_KEY = "ibom_agro_market_db";
 
@@ -27,6 +30,8 @@ export const getDB = () => {
       messages: INITIAL_MESSAGES,
       notifications: INITIAL_NOTIFICATIONS,
       auditLogs: INITIAL_AUDIT_LOGS,
+      subscriptionPayments: INITIAL_SUBSCRIPTION_PAYMENTS || [],
+      adPayments: INITIAL_AD_PAYMENTS || [],
       currentUser: null,
       currentRole: null
     };
@@ -35,6 +40,16 @@ export const getDB = () => {
   }
   const db = JSON.parse(data);
   let updated = false;
+
+  // Sync payments arrays if not present
+  if (!db.subscriptionPayments) {
+    db.subscriptionPayments = INITIAL_SUBSCRIPTION_PAYMENTS || [];
+    updated = true;
+  }
+  if (!db.adPayments) {
+    db.adPayments = INITIAL_AD_PAYMENTS || [];
+    updated = true;
+  }
 
   // Auto-sync products
   INITIAL_PRODUCTS.forEach(p => {
@@ -559,8 +574,54 @@ export const queryAI = (queryText) => {
       items: results
     };
   }
+
+  // 2. Services Hub Query
+  if (text.includes("plumber") || text.includes("mechanic") || text.includes("electrician") || text.includes("tailor") || text.includes("photographer")) {
+    let matchingCategory = "";
+    if (text.includes("plumber")) matchingCategory = "Plumbers";
+    else if (text.includes("mechanic")) matchingCategory = "Mechanics";
+    else if (text.includes("electrician")) matchingCategory = "Electricians";
+    else if (text.includes("tailor") || text.includes("hairdresser") || text.includes("repairs")) matchingCategory = "Home Repairs";
+    else if (text.includes("photographer")) matchingCategory = "Media";
+
+    const results = db.products.filter(p => p.category === matchingCategory && p.status === "Available");
+    return {
+      type: "products",
+      message: `I found these verified local **Service Providers** in Akwa Ibom:`,
+      items: results
+    };
+  }
+
+  // 3. Real Estate / Property Query
+  if (text.includes("land") || text.includes("apartment") || text.includes("house") || text.includes("shop") || text.includes("office") || text.includes("hostel")) {
+    let matchingCategory = "";
+    if (text.includes("land")) matchingCategory = "Land";
+    else if (text.includes("house")) matchingCategory = "Houses";
+    else if (text.includes("apartment") || text.includes("flat") || text.includes("rent")) matchingCategory = "Apartments";
+    else matchingCategory = "Commercial";
+
+    const results = db.products.filter(p => p.category === matchingCategory && p.status === "Available");
+    return {
+      type: "products",
+      message: `Here are available **Properties & Commercial Rentals** matching your request:`,
+      items: results
+    };
+  }
+
+  // 4. Vehicles / Cars Query
+  if (text.includes("car") || text.includes("motorcycle") || text.includes("toyota") || text.includes("suzuki") || text.includes("spare parts")) {
+    const results = db.products.filter(p => 
+      (p.category === "Cars" || p.category === "Motorcycles" || p.category === "Parts & Accessories") && 
+      p.status === "Available"
+    );
+    return {
+      type: "products",
+      message: `I found these **Vehicles & Accessories** listed in Akwa Ibom:`,
+      items: results
+    };
+  }
   
-  // 2. "Find cassava near me" or "Cassava near Uyo"
+  // 5. "Find cassava near me" or "Cassava near Uyo"
   if (text.includes("cassava") && (text.includes("near") || text.includes("in") || text.includes("around"))) {
     // Determine location if mentioned, or default to current user location
     let targetLga = db.currentUser?.lga || "Uyo";
@@ -581,7 +642,7 @@ export const queryAI = (queryText) => {
     };
   }
   
-  // 3. "Cheapest palm oil today" or "Cheapest palm oil"
+  // 6. "Cheapest palm oil today" or "Cheapest palm oil"
   if (text.includes("palm oil") && (text.includes("cheapest") || text.includes("lowest price") || text.includes("cheap"))) {
     const results = db.products
       .filter(p => p.name.toLowerCase().includes("palm oil") && p.status === "Available")
@@ -594,58 +655,19 @@ export const queryAI = (queryText) => {
     };
   }
 
-  // 4. "Show verified fish farmers" or "verified fish"
+  // 7. "Show verified fish farmers" or "verified fish"
   if (text.includes("fish") && text.includes("verified")) {
     const verifiedFarmers = db.users.filter(u => 
-      u.role === "Farmer" && 
-      u.farmType.toLowerCase().includes("fish") && 
+      (u.role === "Farmer" || u.role === "Seller") && 
+      u.farmType?.toLowerCase().includes("fish") && 
       (u.verification === "Gold" || u.verification === "Silver")
     );
     
     return {
       type: "farmers",
-      message: "Here are verified fish/seafood farmers (Silver/Gold verification) across Akwa Ibom:",
+      message: "Here are verified fish/seafood partners (Silver/Gold verification) across Akwa Ibom:",
       items: verifiedFarmers
     };
-  }
-
-  // 5. "Which farmer has tomatoes available this week?" or "tomatoes"
-  if (text.includes("tomatoes") || text.includes("tomato")) {
-    const results = db.products.filter(p => 
-      p.name.toLowerCase().includes("tomato") && 
-      p.status === "Available"
-    );
-    
-    return {
-      type: "products",
-      message: "Here are farmers who currently have fresh tomatoes in stock:",
-      items: results
-    };
-  }
-
-  // 6. Periwinkles (Mfi) query
-  if (text.includes("periwinkle") || text.includes("mfi")) {
-    const results = db.products.filter(p => 
-      (p.name.toLowerCase().includes("periwinkle") || p.description.toLowerCase().includes("periwinkle") || p.name.toLowerCase().includes("mfi")) &&
-      p.status === "Available"
-    );
-    return {
-      type: "products",
-      message: "Here are listings for fresh river periwinkles (Mfi) harvested along coastal waters:",
-      items: results
-    };
-  }
-
-  // 7. "Compare garri prices across markets" or "compare garri"
-  if (text.includes("garri") && (text.includes("compare") || text.includes("price") || text.includes("markets"))) {
-    const garriPrices = db.marketPrices.find(mp => mp.product.toLowerCase().includes("garri"));
-    if (garriPrices) {
-      return {
-        type: "market_prices",
-        message: "Here is a comparison of daily Garri prices across major Akwa Ibom markets:",
-        prices: garriPrices
-      };
-    }
   }
 
   // Generic Search Match
@@ -674,7 +696,102 @@ export const queryAI = (queryText) => {
 
   return {
     type: "text",
-    message: "I couldn't find specific products matching that request. You can try asking:\n- *'Show bulk palm oil'* (wholesale jerrycans/drums)\n- *'Find cassava near me'*\n- *'Show verified fish farmers'*\n- *'Where can I buy fresh mfi?'* (periwinkles)",
+    message: "I couldn't find specific products matching that request. You can try asking:\n- *'Find a mechanic nearby'*\n- *'Show apartments for rent'*\n- *'Show bulk palm oil'*\n- *'Where can I buy fresh mfi?'* (periwinkles)",
     items: []
   };
+};
+
+// Storefront & Monetization Helper Mutators
+export const toggleFollowStore = (sellerId) => {
+  const db = getDB();
+  const buyerId = db.currentUser?.id;
+  if (!buyerId) return db;
+
+  const index = db.users.findIndex(u => u.id === sellerId);
+  if (index !== -1) {
+    const seller = db.users[index];
+    if (!seller.followersList) {
+      seller.followersList = [];
+    }
+    const idx = seller.followersList.indexOf(buyerId);
+    if (idx !== -1) {
+      seller.followersList.splice(idx, 1);
+      seller.followers = Math.max(0, seller.followers - 1);
+    } else {
+      seller.followersList.push(buyerId);
+      seller.followers = (seller.followers || 0) + 1;
+    }
+    saveDB(db);
+  }
+  return db;
+};
+
+export const updateBusinessStorefront = (storefrontData) => {
+  const db = getDB();
+  const index = db.users.findIndex(u => u.id === db.currentUser.id);
+  if (index !== -1) {
+    db.users[index] = {
+      ...db.users[index],
+      ...storefrontData
+    };
+    db.currentUser = db.users[index];
+    addAuditLog(db, "Storefront Updated", `${db.currentUser.name} updated digital storefront details`);
+    saveDB(db);
+  }
+  return db;
+};
+
+export const subscribeToPlan = (planName, price) => {
+  const db = getDB();
+  const user = db.currentUser;
+  if (!user) return db;
+
+  const userIdx = db.users.findIndex(u => u.id === user.id);
+  if (userIdx !== -1) {
+    db.users[userIdx].subscriptionPlan = planName;
+    db.users[userIdx].verification = planName === "Premium" ? "Gold" : planName === "Pro" ? "Silver" : "Bronze";
+    db.currentUser = db.users[userIdx];
+  }
+
+  // Log subscription payment
+  const newSubPayment = {
+    id: "sub-" + Date.now(),
+    companyId: user.id,
+    name: user.name,
+    plan: planName,
+    amount: price,
+    date: new Date().toISOString().split("T")[0],
+    status: "Active"
+  };
+  
+  if (!db.subscriptionPayments) db.subscriptionPayments = [];
+  db.subscriptionPayments.push(newSubPayment);
+
+  addAuditLog(db, "Subscription Activated", `${user.name} subscribed to ${planName} Plan (₦${price.toLocaleString()})`);
+  addNotification(db, user.id, "Subscription Activated", `Welcome to your ${planName} Plan. Enjoy expanded listings and premium features!`);
+  saveDB(db);
+  return db;
+};
+
+export const purchaseAd = (adType, price) => {
+  const db = getDB();
+  const user = db.currentUser;
+  if (!user) return db;
+
+  const newAdPayment = {
+    id: "ad-" + Date.now(),
+    companyId: user.id,
+    name: user.name,
+    type: adType,
+    amount: price,
+    date: new Date().toISOString().split("T")[0]
+  };
+
+  if (!db.adPayments) db.adPayments = [];
+  db.adPayments.push(newAdPayment);
+
+  addAuditLog(db, "Ad Space Purchased", `${user.name} purchased ${adType} advertising (₦${price.toLocaleString()})`);
+  addNotification(db, user.id, "Ad Campaign Active", `Your ${adType} campaign has been launched successfully!`);
+  saveDB(db);
+  return db;
 };

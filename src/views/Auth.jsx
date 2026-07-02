@@ -437,36 +437,47 @@ export default function Auth({ onAuthSuccess, onBackToLanding }) {
                 <div className="form-field">
                   <label>User Role *</label>
                   <select value={role} onChange={(e) => setRole(e.target.value)}>
-                    <option value="Buyer">Buyer (Hotel, Chef, Retailer)</option>
-                    <option value="Farmer">Farmer (Producer)</option>
+                    <option value="Buyer">Buyer (Browse & Purchase)</option>
+                    <option value="Farmer">Farmer (Produce Crops/Livestock)</option>
+                    <option value="Seller">Seller / Business Owner (Classifieds, Storefronts, Services)</option>
                     <option value="Logistics Partner">Logistics Delivery Carrier</option>
                   </select>
                 </div>
 
-                {/* Farmer Profile Fields */}
-                {role === "Farmer" && (
+                {/* Farmer & Seller Profile Fields */}
+                {(role === "Farmer" || role === "Seller") && (
                   <div style={{ border: "1px solid var(--glass-border)", padding: "14px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "12px", background: "rgba(255,255,255,0.01)" }}>
                     <div className="form-field">
-                      <label>Farm Name</label>
+                      <label>{role === "Farmer" ? "Farm Name" : "Store / Business Name"}</label>
                       <input
                         type="text"
-                        placeholder="e.g. Etim Gold Agri-Ventures"
+                        placeholder={role === "Farmer" ? "e.g. Etim Gold Agri-Ventures" : "e.g. Akpan Digital Plaza"}
                         value={farmName}
                         onChange={(e) => setFarmName(e.target.value)}
                       />
                     </div>
                     <div className="form-field">
-                      <label>Farm Category</label>
-                      <select value={farmType} onChange={(e) => setFarmType(e.target.value)}>
-                        <option value="Crops & Processing">Crops & Processing</option>
-                        <option value="Fish Farming">Fish Farming</option>
-                        <option value="Poultry">Poultry</option>
-                        <option value="Livestock">Livestock</option>
-                        <option value="Palm Processing">Palm Processing</option>
-                      </select>
+                      <label>{role === "Farmer" ? "Farm Category" : "Business Category"}</label>
+                      {role === "Farmer" ? (
+                        <select value={farmType} onChange={(e) => setFarmType(e.target.value)}>
+                          <option value="Crops & Processing">Crops & Processing</option>
+                          <option value="Fish Farming">Fish Farming</option>
+                          <option value="Poultry">Poultry</option>
+                          <option value="Livestock">Livestock</option>
+                          <option value="Palm Processing">Palm Processing</option>
+                        </select>
+                      ) : (
+                        <select value={farmType} onChange={(e) => setFarmType(e.target.value)}>
+                          <option value="Buy & Sell / Retail">Buy & Sell / Retail</option>
+                          <option value="Property Listing Agent">Property Listing Agent</option>
+                          <option value="Vehicle Auto Dealer">Vehicle Auto Dealer</option>
+                          <option value="Food & Restaurant">Food & Restaurant</option>
+                          <option value="Professional Services">Professional Services</option>
+                        </select>
+                      )}
                     </div>
                     <div className="form-field">
-                      <label>Bio / Description</label>
+                      <label>Store / Business Bio</label>
                       <textarea
                         placeholder="Tell buyers about your produce..."
                         value={bio}
