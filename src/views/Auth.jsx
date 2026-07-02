@@ -3,7 +3,7 @@ import { LogIn, UserPlus, Shield, Eye, EyeOff, MapPin, Briefcase } from "lucide-
 import { motion } from "framer-motion";
 import { AKWA_IBOM_LOCATIONS, getDB } from "../db/store";
 import { auth, db as firestoreDb, isConfigured } from "../lib/firebase";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 
 export default function Auth({ onAuthSuccess, onBackToLanding }) {
@@ -11,6 +11,8 @@ export default function Auth({ onAuthSuccess, onBackToLanding }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   // Form inputs
   const [email, setEmail] = useState("");
@@ -129,48 +131,118 @@ export default function Auth({ onAuthSuccess, onBackToLanding }) {
           return;
         }
 
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const uid = userCredential.user.uid;
-
-        const userProfile = {
-          id: uid,
-          email,
-          name,
-          phone,
-          role,
-          lga,
-          town,
-          address,
-          state: "Akwa Ibom",
-          avatar: `https://images.unsplash.com/photo-${1500000000000 + Math.floor(Math.random() * 999999999)}?w=150`,
-          followers: 0,
-          rating: 5.0,
-          reviewsCount: 0,
-          verification: role === "Farmer" ? "Bronze" : null,
-          createdAt: new Date().toISOString()
-        };
-
-        if (role === "Farmer") {
-          userProfile.farmName = farmName || `${name}'s Farm`;
-          userProfile.farmType = farmType;
-          userProfile.bio = bio || "Fresh agricultural products from Akwa Ibom State.";
-          userProfile.yearsFarming = 1;
-          userProfile.harvestCalendar = [];
+        let userCredential;
+        try {
+          userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        } catch (authErr) {
+          throw authErr;
         }
 
-        await setDoc(doc(firestoreDb, "users", uid), userProfile);
-        onAuthSuccess(userProfile);
+        try {
+          const uid = userCredential.user.uid;
+          const userProfile = {
+            id: uid,
+            email,
+            name,
+            phone,
+            role,
+            lga,
+            town,
+            address,
+            state: "Akwa Ibom",
+            avatar: `https://images.unsplash.com/photo-${1500000000000 + Math.floor(Math.random() * 999999999)}?w=150`,
+            followers: 0,
+            rating: 5.0,
+            reviewsCount: 0,
+            verification: role === "Farmer" ? "Bronze" : null,
+            createdAt: new Date().toISOString()
+          };
+
+          if (role === "Farmer") {
+            userProfile.farmName = farmName || `${name}'s Farm`;
+            userProfile.farmType = farmType;
+            userProfile.bio = bio || "Fresh agricultural products from Akwa Ibom State.";
+            userProfile.yearsFarming = 1;
+            userProfile.harvestCalendar = [];
+          }
+
+          await setDoc(doc(firestoreDb, "users", uid), userProfile);
+          onAuthSuccess(userProfile);
+        } catch (dbErr) {
+          if (userCredential && userCredential.user) {
+            try {
+              await userCredential.user.delete();
+            } catch (delErr) {
+              console.error("Failed to delete auth user after database registration failed:", delErr);
+            }
+          }
+          throw dbErr;
+        }
       }
     } catch (err) {
       console.error(err);
-      if (err.code === "auth/email-already-in-use") {
+      const code = err.code || "";
+      if (code === "auth/email-already-in-use") {
         setError("This email is already registered.");
-      } else if (err.code === "auth/weak-password") {
+      } else if (code === "auth/weak-password") {
         setError("Password should be at least 6 characters.");
-      } else if (err.code === "auth/invalid-credential") {
+      } else if (code === "auth/invalid-credential" || code === "auth/wrong-password") {
         setError("Invalid email or password.");
+      } else if (code === "auth/user-not-found") {
+        setError("No account found with this email.");
+      } else if (code === "auth/invalid-email") {
+        setError("Invalid email address format.");
+      } else if (code === "auth/user-disabled") {
+        setError("This user account has been disabled.");
+      } else if (code === "auth/too-many-requests") {
+        setError("Access to this account has been temporarily disabled due to many failed login attempts. Try again later or reset your password.");
       } else {
         setError(err.message || "An authentication error occurred.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    setResetEmailSent(false);
+
+    if (!isConfigured) {
+      // Mock Forgot Password
+      try {
+        const localDb = getDB();
+        const foundUser = localDb.users.find(
+          (u) => u.email.toLowerCase() === email.toLowerCase()
+        );
+        if (foundUser) {
+          setResetEmailSent(true);
+        } else {
+          setError("Local user account not found with this email. Try bassey.kitchen@cook.ng");
+        }
+      } catch (err) {
+        setError("A local reset error occurred.");
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Real Firebase Reset
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setResetEmailSent(true);
+    } catch (err) {
+      console.error(err);
+      const code = err.code || "";
+      if (code === "auth/user-not-found") {
+        setError("No account found with this email.");
+      } else if (code === "auth/invalid-email") {
+        setError("Invalid email address format.");
+      } else {
+        setError(err.message || "Could not send password reset email.");
       }
     } finally {
       setLoading(false);
@@ -183,10 +255,10 @@ export default function Auth({ onAuthSuccess, onBackToLanding }) {
   };
 
   const demoAccounts = [
-    { name: "Chef Bassey (Buyer)", email: "bassey@ibomagro.ng" },
-    { name: "Samuel Akpan (Farmer)", email: "samuel@ibomagro.ng" },
-    { name: "Ibom Express (Logistics)", email: "logistics@ibomagro.ng" },
-    { name: "Mfon (Admin)", email: "admin@ibomagro.ng" }
+    { name: "Chef Bassey (Buyer)", email: "bassey.kitchen@cook.ng" },
+    { name: "Etim Okon (Farmer)", email: "etim.okon@agro.ng" },
+    { name: "Ibom Express (Logistics)", email: "deliveries@ibomexpress.com" },
+    { name: "Mfon Udo (Admin)", email: "admin@ibommarket.com" }
   ];
 
   return (
@@ -224,167 +296,235 @@ export default function Auth({ onAuthSuccess, onBackToLanding }) {
           </div>
         )}
 
-        <form onSubmit={handleAuth} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          {/* Sign Up Fields */}
-          {!isLogin && (
-            <>
-              <div className="form-field">
-                <label>Full Name *</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Samuel Akpan"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                />
+        {isForgotPassword ? (
+          <form onSubmit={handleForgotPassword} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <h3 style={{ margin: "0 0 8px 0", color: "white", fontSize: "1.2rem", fontWeight: "700" }}>Reset Password</h3>
+            
+            {resetEmailSent ? (
+              <div style={{ background: "rgba(16, 185, 129, 0.08)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "8px", padding: "14px", color: "var(--primary-light)", fontSize: "0.85rem", lineHeight: "1.4" }}>
+                <strong>Reset Link Sent!</strong>
+                {!isConfigured ? (
+                  <p style={{ margin: "4px 0 0 0" }}>
+                    A password reset simulation link has been sent to <strong>{email}</strong>.<br />
+                    <em>(Local Mode: In this simulation, the password remains <strong>"password123"</strong>)</em>.
+                  </p>
+                ) : (
+                  <p style={{ margin: "4px 0 0 0" }}>
+                    A password reset link has been sent to <strong>{email}</strong>. Please check your inbox.
+                  </p>
+                )}
               </div>
-
-              <div className="form-field">
-                <label>Phone Number *</label>
-                <input
-                  type="tel"
-                  placeholder="e.g. 0803XXXXXXX"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-field">
-                <label>User Role *</label>
-                <select value={role} onChange={(e) => setRole(e.target.value)}>
-                  <option value="Buyer">Buyer (Hotel, Chef, Retailer)</option>
-                  <option value="Farmer">Farmer (Producer)</option>
-                  <option value="Logistics Partner">Logistics Delivery Carrier</option>
-                </select>
-              </div>
-
-              {/* Farmer Profile Fields */}
-              {role === "Farmer" && (
-                <div style={{ border: "1px solid var(--glass-border)", padding: "14px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "12px", background: "rgba(255,255,255,0.01)" }}>
-                  <div className="form-field">
-                    <label>Farm Name</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Etim Gold Agri-Ventures"
-                      value={farmName}
-                      onChange={(e) => setFarmName(e.target.value)}
-                    />
-                  </div>
-                  <div className="form-field">
-                    <label>Farm Category</label>
-                    <select value={farmType} onChange={(e) => setFarmType(e.target.value)}>
-                      <option value="Crops & Processing">Crops & Processing</option>
-                      <option value="Fish Farming">Fish Farming</option>
-                      <option value="Poultry">Poultry</option>
-                      <option value="Livestock">Livestock</option>
-                      <option value="Palm Processing">Palm Processing</option>
-                    </select>
-                  </div>
-                  <div className="form-field">
-                    <label>Bio / Description</label>
-                    <textarea
-                      placeholder="Tell buyers about your produce..."
-                      value={bio}
-                      onChange={(e) => setBio(e.target.value)}
-                      rows={2}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Location Fields */}
-              <div className="form-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: 0 }}>
-                <div className="form-field">
-                  <label>LGA *</label>
-                  <select value={lga} onChange={(e) => { setLga(e.target.value); setTown(""); }}>
-                    {AKWA_IBOM_LOCATIONS.map((loc) => (
-                      <option key={loc.lga} value={loc.lga}>{loc.lga}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-field">
-                  <label>Town *</label>
-                  <select value={town} onChange={(e) => setTown(e.target.value)} required>
-                    <option value="" disabled>Select Town...</option>
-                    {townsList.map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="form-field">
-                <label>Physical Address</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 14 Ikpa Road, Uyo"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                />
-              </div>
-            </>
-          )}
-
-          {/* Common Fields */}
-          <div className="form-field">
-            <label>Email Address *</label>
-            <input
-              type="email"
-              placeholder="e.g. user@ibomagro.ng"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="form-field">
-            <label>Password *</label>
-            <div style={{ position: "relative" }}>
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                style={{ paddingRight: "40px", width: "100%" }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: "absolute",
-                  right: "12px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "var(--gray-600)"
-                }}
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-          </div>
-
-          <button type="submit" className="btn btn-primary" style={{ width: "100%", padding: "12px", marginTop: "8px" }} disabled={loading}>
-            {loading ? (
-              <span className="spinner">Authenticating...</span>
-            ) : isLogin ? (
-              <>
-                <LogIn size={16} style={{ marginRight: "6px" }} /> Log In
-              </>
             ) : (
               <>
-                <UserPlus size={16} style={{ marginRight: "6px" }} /> Register Profile
+                <p style={{ color: "var(--gray-600)", fontSize: "0.82rem", margin: 0 }}>
+                  Enter your email address below, and we'll send you a link to reset your password.
+                </p>
+                <div className="form-field">
+                  <label>Email Address *</label>
+                  <input
+                    type="email"
+                    placeholder="e.g. user@ibomagro.ng"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <button type="submit" className="btn btn-primary" style={{ width: "100%", padding: "12px", marginTop: "8px" }} disabled={loading}>
+                  {loading ? "Sending link..." : "Send Reset Link"}
+                </button>
               </>
             )}
-          </button>
-        </form>
 
-        {isLogin && !isConfigured && (
+            <button
+              type="button"
+              className="btn btn-outline"
+              style={{ width: "100%", padding: "12px" }}
+              onClick={() => {
+                setIsForgotPassword(false);
+                setResetEmailSent(false);
+                setError("");
+              }}
+            >
+              Back to Log In
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleAuth} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {/* Sign Up Fields */}
+            {!isLogin && (
+              <>
+                <div className="form-field">
+                  <label>Full Name *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Samuel Akpan"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>Phone Number *</label>
+                  <input
+                    type="tel"
+                    placeholder="e.g. 0803XXXXXXX"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="form-field">
+                  <label>User Role *</label>
+                  <select value={role} onChange={(e) => setRole(e.target.value)}>
+                    <option value="Buyer">Buyer (Hotel, Chef, Retailer)</option>
+                    <option value="Farmer">Farmer (Producer)</option>
+                    <option value="Logistics Partner">Logistics Delivery Carrier</option>
+                  </select>
+                </div>
+
+                {/* Farmer Profile Fields */}
+                {role === "Farmer" && (
+                  <div style={{ border: "1px solid var(--glass-border)", padding: "14px", borderRadius: "8px", display: "flex", flexDirection: "column", gap: "12px", background: "rgba(255,255,255,0.01)" }}>
+                    <div className="form-field">
+                      <label>Farm Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Etim Gold Agri-Ventures"
+                        value={farmName}
+                        onChange={(e) => setFarmName(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-field">
+                      <label>Farm Category</label>
+                      <select value={farmType} onChange={(e) => setFarmType(e.target.value)}>
+                        <option value="Crops & Processing">Crops & Processing</option>
+                        <option value="Fish Farming">Fish Farming</option>
+                        <option value="Poultry">Poultry</option>
+                        <option value="Livestock">Livestock</option>
+                        <option value="Palm Processing">Palm Processing</option>
+                      </select>
+                    </div>
+                    <div className="form-field">
+                      <label>Bio / Description</label>
+                      <textarea
+                        placeholder="Tell buyers about your produce..."
+                        value={bio}
+                        onChange={(e) => setBio(e.target.value)}
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Location Fields */}
+                <div className="form-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: 0 }}>
+                  <div className="form-field">
+                    <label>LGA *</label>
+                    <select value={lga} onChange={(e) => { setLga(e.target.value); setTown(""); }}>
+                      {AKWA_IBOM_LOCATIONS.map((loc) => (
+                        <option key={loc.lga} value={loc.lga}>{loc.lga}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-field">
+                    <label>Town *</label>
+                    <select value={town} onChange={(e) => setTown(e.target.value)} required>
+                      <option value="" disabled>Select Town...</option>
+                      {townsList.map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-field">
+                  <label>Physical Address</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 14 Ikpa Road, Uyo"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                  />
+                </div>
+              </>
+            )}
+
+            {/* Common Fields */}
+            <div className="form-field">
+              <label>Email Address *</label>
+              <input
+                type="email"
+                placeholder="e.g. user@ibomagro.ng"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-field">
+              <label>Password *</label>
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  style={{ paddingRight: "40px", width: "100%" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: "absolute",
+                    right: "12px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "var(--gray-600)"
+                  }}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+              {isLogin && (
+                <div style={{ textAlign: "right", marginTop: "6px" }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsForgotPassword(true);
+                      setError("");
+                    }}
+                    style={{ background: "none", border: "none", color: "var(--primary-light)", fontSize: "0.8rem", cursor: "pointer", textDecoration: "underline" }}
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <button type="submit" className="btn btn-primary" style={{ width: "100%", padding: "12px", marginTop: "8px" }} disabled={loading}>
+              {loading ? (
+                <span className="spinner">Authenticating...</span>
+              ) : isLogin ? (
+                <>
+                  <LogIn size={16} style={{ marginRight: "6px" }} /> Log In
+                </>
+              ) : (
+                <>
+                  <UserPlus size={16} style={{ marginRight: "6px" }} /> Register Profile
+                </>
+              )}
+            </button>
+          </form>
+        )}
+
+        {isLogin && !isForgotPassword && !isConfigured && (
           <div style={{ marginTop: "20px", borderTop: "1px solid var(--glass-border)", paddingTop: "14px" }}>
             <small style={{ color: "var(--gray-600)", display: "block", marginBottom: "8px", fontWeight: "bold" }}>CLICK TO AUTO-FILL TEST CREDENTIALS:</small>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
@@ -402,31 +542,33 @@ export default function Auth({ onAuthSuccess, onBackToLanding }) {
           </div>
         )}
 
-        <div className="auth-toggle" style={{ marginTop: "24px", textAlign: "center", fontSize: "0.9rem" }}>
-          {isLogin ? (
-            <p style={{ color: "var(--gray-600)" }}>
-              New to the market?{" "}
-              <button 
-                type="button" 
-                onClick={() => setIsLogin(false)}
-                style={{ background: "none", border: "none", color: "var(--primary)", fontWeight: "bold", cursor: "pointer", textDecoration: "underline" }}
-              >
-                Create an account
-              </button>
-            </p>
-          ) : (
-            <p style={{ color: "var(--gray-600)" }}>
-              Already registered?{" "}
-              <button 
-                type="button" 
-                onClick={() => setIsLogin(true)}
-                style={{ background: "none", border: "none", color: "var(--primary)", fontWeight: "bold", cursor: "pointer", textDecoration: "underline" }}
-              >
-                Sign In
-              </button>
-            </p>
-          )}
-        </div>
+        {!isForgotPassword && (
+          <div className="auth-toggle" style={{ marginTop: "24px", textAlign: "center", fontSize: "0.9rem" }}>
+            {isLogin ? (
+              <p style={{ color: "var(--gray-600)" }}>
+                New to the market?{" "}
+                <button 
+                  type="button" 
+                  onClick={() => setIsLogin(false)}
+                  style={{ background: "none", border: "none", color: "var(--primary)", fontWeight: "bold", cursor: "pointer", textDecoration: "underline" }}
+                >
+                  Create an account
+                </button>
+              </p>
+            ) : (
+              <p style={{ color: "var(--gray-600)" }}>
+                Already registered?{" "}
+                <button 
+                  type="button" 
+                  onClick={() => setIsLogin(true)}
+                  style={{ background: "none", border: "none", color: "var(--primary)", fontWeight: "bold", cursor: "pointer", textDecoration: "underline" }}
+                >
+                  Sign In
+                </button>
+              </p>
+            )}
+          </div>
+        )}
       </motion.div>
     </div>
   );

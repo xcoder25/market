@@ -2,11 +2,14 @@ import React, { useState, useEffect } from "react";
 import { DollarSign, ShoppingBag, PlusCircle, Check, X, ShieldAlert, Sparkles, TrendingUp, BarChart2, Star, Calendar, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getDB, updateOrderStatus, addProductListing, updateProduct, CATEGORIES, AKWA_IBOM_LOCATIONS, saveDB } from "../db/store";
+import Loader3D from "../components/Loader3D";
 
 export default function FarmerDashboard({ activeUser, onSwitchView }) {
   const [db, setDb] = useState(getDB());
   const [activeTab, setActiveTab] = useState("overview"); // overview, orders, products, harvest
   const [showAddForm, setShowAddForm] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
   
   // New product form states
   const [prodName, setProdName] = useState("");
@@ -53,23 +56,38 @@ export default function FarmerDashboard({ activeUser, onSwitchView }) {
   const activeOrdersCount = myOrders.filter(o => ["Requested", "Accepted", "Paid", "Assigned", "Picked Up", "En Route", "Delivered"].includes(o.status)).length;
 
   const handleAcceptOrder = (orderId) => {
-    const updatedDb = updateOrderStatus(orderId, "Accepted");
-    setDb(updatedDb);
-    window.dispatchEvent(new Event("db_update"));
+    setActionLoading(true);
+    setLoadingMessage("Accepting and processing buyer's order request...");
+    setTimeout(() => {
+      const updatedDb = updateOrderStatus(orderId, "Accepted");
+      setDb(updatedDb);
+      setActionLoading(false);
+      window.dispatchEvent(new Event("db_update"));
+    }, 1200);
   };
 
   const handleRejectOrder = (orderId) => {
-    const updatedDb = updateOrderStatus(orderId, "Rejected");
-    setDb(updatedDb);
-    window.dispatchEvent(new Event("db_update"));
+    setActionLoading(true);
+    setLoadingMessage("Processing order rejection...");
+    setTimeout(() => {
+      const updatedDb = updateOrderStatus(orderId, "Rejected");
+      setDb(updatedDb);
+      setActionLoading(false);
+      window.dispatchEvent(new Event("db_update"));
+    }, 1200);
   };
 
   const handleConfirmPayment = (orderId) => {
-    const updatedDb = updateOrderStatus(orderId, "Assigned", {
-      deliveryStatus: "Pending Pickup"
-    });
-    setDb(updatedDb);
-    window.dispatchEvent(new Event("db_update"));
+    setActionLoading(true);
+    setLoadingMessage("Confirming receipt of payment and preparing dispatch...");
+    setTimeout(() => {
+      const updatedDb = updateOrderStatus(orderId, "Assigned", {
+        deliveryStatus: "Pending Pickup"
+      });
+      setDb(updatedDb);
+      setActionLoading(false);
+      window.dispatchEvent(new Event("db_update"));
+    }, 1200);
   };
 
   const handleToggleStatus = (productId, currentStatus) => {
@@ -84,6 +102,9 @@ export default function FarmerDashboard({ activeUser, onSwitchView }) {
       alert("Please fill all required fields.");
       return;
     }
+
+    setActionLoading(true);
+    setLoadingMessage("Uploading and processing crop listing data...");
 
     const imgMap = {
       Crops: "https://images.unsplash.com/photo-1592417817098-8f3d6eb19675?w=500",
@@ -113,20 +134,23 @@ export default function FarmerDashboard({ activeUser, onSwitchView }) {
       image: prodImg || imgMap[prodCat] || "https://images.unsplash.com/photo-1592417817098-8f3d6eb19675?w=500"
     };
 
-    const updatedDb = addProductListing(productData);
-    setDb(updatedDb);
-    setShowAddForm(false);
-    
-    // Clear fields
-    setProdName("");
-    setProdDesc("");
-    setProdPrice("");
-    setProdQty("");
-    setProdMinOrder("1");
-    setProdHarvestDate("");
-    setProdImg("");
-    alert("New product listing uploaded successfully!");
-    window.dispatchEvent(new Event("db_update"));
+    setTimeout(() => {
+      const updatedDb = addProductListing(productData);
+      setDb(updatedDb);
+      setShowAddForm(false);
+      setActionLoading(false);
+      
+      // Clear fields
+      setProdName("");
+      setProdDesc("");
+      setProdPrice("");
+      setProdQty("");
+      setProdMinOrder("1");
+      setProdHarvestDate("");
+      setProdImg("");
+      alert("New product listing uploaded successfully!");
+      window.dispatchEvent(new Event("db_update"));
+    }, 1200);
   };
 
   const handleAddHarvest = (e) => {
@@ -716,6 +740,10 @@ export default function FarmerDashboard({ activeUser, onSwitchView }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {actionLoading && (
+        <Loader3D fullScreen={true} message={loadingMessage} />
+      )}
     </div>
   );
 }

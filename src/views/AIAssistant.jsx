@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Send, Sparkles, Star, MapPin, ShieldCheck, RefreshCw } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getDB, queryAI } from "../db/store";
+import Loader3D from "../components/Loader3D";
 
 export default function AIAssistant({ activeUser, onBuyProduct, onViewFarmer }) {
   const [messages, setMessages] = useState([
@@ -176,24 +177,10 @@ export default function AIAssistant({ activeUser, onBuyProduct, onViewFarmer }) 
             className="ai-bubble bot"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            style={{ display: "flex", alignItems: "center", gap: "6px" }}
+            style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 16px" }}
           >
-            <div style={{ display: "flex", gap: "4px" }}>
-              {[0, 1, 2].map(dot => (
-                <motion.div
-                  key={dot}
-                  style={{ width: "6px", height: "6px", borderRadius: "50%", backgroundColor: "var(--primary)" }}
-                  animate={{ y: ["0px", "-6px", "0px"] }}
-                  transition={{
-                    repeat: Infinity,
-                    duration: 0.6,
-                    delay: dot * 0.15,
-                    ease: "easeInOut"
-                  }}
-                />
-              ))}
-            </div>
-            <span style={{ fontSize: "0.85rem", color: "var(--gray-600)" }}>AI is searching database...</span>
+            <Loader3D size={32} glowColor="#10b981" />
+            <span style={{ fontSize: "0.85rem", color: "var(--gray-600)", fontWeight: "500" }}>AI is searching database...</span>
           </motion.div>
         )}
         <div ref={messagesEndRef} />

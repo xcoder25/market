@@ -15,6 +15,7 @@ import {
   AKWA_IBOM_LOCATIONS, 
   CATEGORIES 
 } from "../db/store";
+import Loader3D from "../components/Loader3D";
 
 const CATEGORY_ICONS = {
   Crops: <Sprout size={16} />,
@@ -63,6 +64,8 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
   const [rating, setRating] = useState(5);
   const [reviewComment, setReviewComment] = useState("");
   const [qualityRating, setQualityRating] = useState(5);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
   const [commRating, setCommRating] = useState(5);
   const [delivRating, setDelivRating] = useState(5);
   const [packRating, setPackRating] = useState(5);
@@ -148,13 +151,19 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
       return;
     }
     
-    const { db: updatedDb, orderId } = placeOrder(product.id, orderQty);
-    setDb(updatedDb);
-    
-    const placedOrder = updatedDb.orders.find(o => o.id === orderId);
-    setCurrentInvoice(placedOrder);
-    setSelectedProduct(null);
-    window.dispatchEvent(new Event("db_update"));
+    setActionLoading(true);
+    setLoadingMessage("Securing your escrow allocation...");
+
+    setTimeout(() => {
+      const { db: updatedDb, orderId } = placeOrder(product.id, orderQty);
+      setDb(updatedDb);
+      
+      const placedOrder = updatedDb.orders.find(o => o.id === orderId);
+      setCurrentInvoice(placedOrder);
+      setSelectedProduct(null);
+      setActionLoading(false);
+      window.dispatchEvent(new Event("db_update"));
+    }, 1200);
   };
 
   // Handle Paystack-style payment submit
@@ -183,18 +192,24 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
     const confirmRelease = window.confirm("Are you sure you want to release the Escrow funds to the farmer? This indicates you have received the fresh produce in perfect condition.");
     if (!confirmRelease) return;
 
-    const updatedDb = updateOrderStatus(orderId, "Completed");
-    setDb(updatedDb);
-    setSelectedOrderForTracking(null);
-    alert("Escrow funds successfully disbursed to the farmer's wallet account!");
-    
-    // Prompt to review
-    const orderObj = updatedDb.orders.find(o => o.id === orderId);
-    if (orderObj) {
-      setReviewOrder(orderObj);
-      setActiveTab("listings");
-    }
-    window.dispatchEvent(new Event("db_update"));
+    setActionLoading(true);
+    setLoadingMessage("Releasing funds from secure escrow custody...");
+
+    setTimeout(() => {
+      const updatedDb = updateOrderStatus(orderId, "Completed");
+      setDb(updatedDb);
+      setSelectedOrderForTracking(null);
+      setActionLoading(false);
+      alert("Escrow funds successfully disbursed to the farmer's wallet account!");
+      
+      // Prompt to review
+      const orderObj = updatedDb.orders.find(o => o.id === orderId);
+      if (orderObj) {
+        setReviewOrder(orderObj);
+        setActiveTab("listings");
+      }
+      window.dispatchEvent(new Event("db_update"));
+    }, 1200);
   };
 
   // Handle Review submission
@@ -1622,6 +1637,13 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {paymentProcessing && (
+        <Loader3D fullScreen={true} message="Processing escrow payment gateway..." />
+      )}
+      {actionLoading && (
+        <Loader3D fullScreen={true} message={loadingMessage} />
+      )}
     </div>
   );
 }

@@ -2,12 +2,15 @@ import React, { useState, useEffect } from "react";
 import { Truck, MapPin, Package, CheckSquare, DollarSign, Star, Navigation, RefreshCw, Check, Clock, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getDB, logisticsClaimJob, updateDeliveryStatus } from "../db/store";
+import Loader3D from "../components/Loader3D";
 
 export default function LogisticsDashboard({ activeUser }) {
   const [db, setDb] = useState(getDB());
   const [activeTab, setActiveTab] = useState("board"); // board, active, history
   const [proofText, setProofText] = useState("");
   const [selectedOrderForProof, setSelectedOrderForProof] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
 
   useEffect(() => {
     const handleUpdate = () => setDb(getDB());
@@ -32,10 +35,15 @@ export default function LogisticsDashboard({ activeUser }) {
   const myEarnings = completedJobs.length * deliveryFeePerTrip;
 
   const handleClaimJob = (orderId) => {
-    const updatedDb = logisticsClaimJob(orderId, activeUser.id);
-    setDb(updatedDb);
-    alert("Job claimed successfully! Please pick up the produce from the farmer.");
-    window.dispatchEvent(new Event("db_update"));
+    setActionLoading(true);
+    setLoadingMessage("Assigning delivery carrier details on-chain...");
+    setTimeout(() => {
+      const updatedDb = logisticsClaimJob(orderId, activeUser.id);
+      setDb(updatedDb);
+      setActionLoading(false);
+      alert("Job claimed successfully! Please pick up the produce from the farmer.");
+      window.dispatchEvent(new Event("db_update"));
+    }, 1200);
   };
 
   const handleUpdateStatus = (orderId, newStatus) => {
@@ -43,9 +51,14 @@ export default function LogisticsDashboard({ activeUser }) {
       const order = db.orders.find(o => o.id === orderId);
       setSelectedOrderForProof(order);
     } else {
-      const updatedDb = updateDeliveryStatus(orderId, newStatus);
-      setDb(getDB());
-      window.dispatchEvent(new Event("db_update"));
+      setActionLoading(true);
+      setLoadingMessage(`Updating transit status to: ${newStatus}...`);
+      setTimeout(() => {
+        const updatedDb = updateDeliveryStatus(orderId, newStatus);
+        setDb(getDB());
+        setActionLoading(false);
+        window.dispatchEvent(new Event("db_update"));
+      }, 1200);
     }
   };
 
@@ -53,12 +66,17 @@ export default function LogisticsDashboard({ activeUser }) {
     e.preventDefault();
     if (!proofText) return;
 
-    updateDeliveryStatus(selectedOrderForProof.id, "Delivered", proofText);
-    setSelectedOrderForProof(null);
-    setProofText("");
-    setDb(getDB());
-    alert("Delivery status marked as Delivered! The buyer has been notified to confirm receipt.");
-    window.dispatchEvent(new Event("db_update"));
+    setActionLoading(true);
+    setLoadingMessage("Finalizing delivery proof and closing escrow order...");
+    setTimeout(() => {
+      updateDeliveryStatus(selectedOrderForProof.id, "Delivered", proofText);
+      setSelectedOrderForProof(null);
+      setProofText("");
+      setDb(getDB());
+      setActionLoading(false);
+      alert("Delivery status marked as Delivered! The buyer has been notified to confirm receipt.");
+      window.dispatchEvent(new Event("db_update"));
+    }, 1200);
   };
 
   // Helper to extract farmer location info
@@ -384,6 +402,10 @@ export default function LogisticsDashboard({ activeUser }) {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {actionLoading && (
+        <Loader3D fullScreen={true} message={loadingMessage} />
+      )}
     </div>
   );
 }
