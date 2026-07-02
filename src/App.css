@@ -468,8 +468,12 @@ h1, h2, h3, h4, h5, h6 {
 /* Product Listing Layouts */
 .marketplace-layout {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
   gap: 32px;
+}
+
+.marketplace-layout > main {
+  min-width: 0;
 }
 
 .filter-sidebar {

@@ -414,7 +414,7 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
           </aside>
 
           {/* Product Grid Area */}
-          <main style={{ width: "100%" }}>
+          <main style={{ width: "100%", minWidth: 0 }}>
             {/* Horizontal Category Pills Row */}
             <div className="category-pills-row">
               <button
