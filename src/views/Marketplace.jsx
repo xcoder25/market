@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Search, Filter, ShieldCheck, Heart, ShoppingBag, Calendar, Check, Send, AlertCircle, RefreshCw, X, MessageSquare, Star, FileText, CreditCard, Truck, MapPin } from "lucide-react";
+import { 
+  Search, Filter, ShieldCheck, Heart, ShoppingBag, Calendar, Check, Send, 
+  AlertCircle, RefreshCw, X, MessageSquare, Star, FileText, CreditCard, 
+  Truck, MapPin, Sprout, Fish, Egg, Beef, Droplets, Package, Apple, 
+  CheckCircle2, ChevronRight, Copy, Award, Shield 
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   getDB, 
@@ -10,6 +15,16 @@ import {
   AKWA_IBOM_LOCATIONS, 
   CATEGORIES 
 } from "../db/store";
+
+const CATEGORY_ICONS = {
+  Crops: <Sprout size={16} />,
+  Fish: <Fish size={16} />,
+  Poultry: <Egg size={16} />,
+  Livestock: <Beef size={16} />,
+  "Palm Products": <Droplets size={16} />,
+  "Processed Products": <Package size={16} />,
+  Fruits: <Apple size={16} />
+};
 
 export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
   const [db, setDb] = useState(getDB());
@@ -36,7 +51,9 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
   const [cardNumber, setCardNumber] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCvc, setCardCvc] = useState("");
+  const [cardName, setCardName] = useState("");
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   const [selectedFarmer, setSelectedFarmer] = useState(null);
   const [selectedOrderForTracking, setSelectedOrderForTracking] = useState(null);
@@ -150,16 +167,16 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
       setPaymentProcessing(false);
       const updatedDb = updateOrderStatus(currentInvoice.id, "Paid");
       setDb(updatedDb);
-      setCurrentInvoice(null);
       
       // Reset input fields
       setCardNumber("");
       setCardExpiry("");
       setCardCvc("");
+      setCardName("");
       
-      alert(`Payment Successful! ₦${currentInvoice.totalAmount.toLocaleString()} has been locked in Akwa Ibom Escrow. The farmer has been notified.`);
+      setPaymentSuccess(true);
       window.dispatchEvent(new Event("db_update"));
-    }, 1500);
+    }, 1800);
   };
 
   const handleConfirmReceipt = (orderId) => {
@@ -229,38 +246,35 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
 
   return (
     <div className="marketplace-page">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px", flexWrap: "wrap", gap: "16px", borderBottom: "1px solid var(--glass-border)", paddingBottom: "16px" }}>
         <div>
           <h2>Ibom Agro Marketplace</h2>
           <p style={{ color: "var(--gray-600)" }}>Connecting you to verified local farmers across Akwa Ibom State</p>
         </div>
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          <button 
-            className={`btn btn-sm ${activeTab === "listings" ? "btn-primary" : "btn-outline"}`}
-            onClick={() => setActiveTab("listings")}
-          >
-            <ShoppingBag size={16} /> Browse Produce
-          </button>
-          <button 
-            className={`btn btn-sm ${activeTab === "farmers" ? "btn-primary" : "btn-outline"}`}
-            onClick={() => setActiveTab("farmers")}
-          >
-            <ShieldCheck size={16} /> Farmers Directory
-          </button>
-          <button 
-            className={`btn btn-sm ${activeTab === "harvest_calendar" ? "btn-primary" : "btn-outline"}`}
-            onClick={() => setActiveTab("harvest_calendar")}
-          >
-            <Calendar size={16} /> Harvest Calendar
-          </button>
-          {activeUser && (
-            <button 
-              className={`btn btn-sm ${activeTab === "my_orders" ? "btn-primary" : "btn-outline"}`}
-              onClick={() => setActiveTab("my_orders")}
+        
+        <div className="marketplace-nav-tabs">
+          {[
+            { id: "listings", label: "Browse Produce", icon: <ShoppingBag size={16} /> },
+            { id: "farmers", label: "Farmers Directory", icon: <ShieldCheck size={16} /> },
+            { id: "harvest_calendar", label: "Harvest Calendar", icon: <Calendar size={16} /> },
+            ...(activeUser ? [{ id: "my_orders", label: `My Orders (${myPendingOrders.length})`, icon: <FileText size={16} /> }] : [])
+          ].map(tab => (
+            <button
+              key={tab.id}
+              className={`marketplace-nav-tab ${activeTab === tab.id ? "active" : ""}`}
+              onClick={() => setActiveTab(tab.id)}
             >
-              <FileText size={16} /> My Orders ({myPendingOrders.length})
+              {activeTab === tab.id && (
+                <motion.div
+                  layoutId="activeMarketTab"
+                  className="marketplace-nav-tab-pill"
+                  transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                />
+              )}
+              {tab.icon}
+              <span>{tab.label}</span>
             </button>
-          )}
+          ))}
         </div>
       </div>
 
@@ -386,14 +400,35 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
 
           {/* Product Grid Area */}
           <main style={{ width: "100%" }}>
-            {/* Collapsible LGA Map Filter */}
-            <div className="card" style={{ marginBottom: "20px", padding: "14px 20px", background: "rgba(16, 185, 129, 0.03)" }}>
+            {/* Horizontal Category Pills Row */}
+            <div className="category-pills-row">
+              <button
+                className={`category-pill ${selectedCategory === "All" ? "active" : ""}`}
+                onClick={() => setSelectedCategory("All")}
+              >
+                <span className="category-pill-icon"><ShoppingBag size={14} /></span>
+                <span>All Products</span>
+              </button>
+              {Object.keys(CATEGORIES).map(cat => (
+                <button
+                  key={cat}
+                  className={`category-pill ${selectedCategory === cat ? "active" : ""}`}
+                  onClick={() => setSelectedCategory(cat)}
+                >
+                  <span className="category-pill-icon">{CATEGORY_ICONS[cat] || <ShoppingBag size={14} />}</span>
+                  <span>{cat}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Collapsible LGA Radar Map Filter */}
+            <div className="card radar-map-card" style={{ marginBottom: "24px", padding: "16px 20px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setMapVisible(!mapVisible)}>
                 <span style={{ display: "flex", alignItems: "center", gap: "8px", fontWeight: "bold", color: "white", fontSize: "0.9rem" }}>
-                  <MapPin size={16} style={{ color: "var(--primary)" }} /> Filter by Akwa Ibom LGA Map
+                  <MapPin size={16} style={{ color: "var(--primary)" }} /> Filter by Akwa Ibom LGA Radar Map
                 </span>
                 <span style={{ color: "var(--primary)", fontSize: "0.8rem", fontWeight: "bold" }}>
-                  {mapVisible ? "Hide Map Drawer" : "Show Map Drawer"}
+                  {mapVisible ? "Hide Radar Map" : "Show Radar Map"}
                 </span>
               </div>
 
@@ -405,8 +440,58 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
                     exit={{ opacity: 0, height: 0 }}
                     style={{ marginTop: "14px", overflow: "hidden", display: "flex", flexDirection: "column", alignItems: "center" }}
                   >
-                    <div style={{ width: "100%", maxWidth: "340px", padding: "8px", background: "rgba(0,0,0,0.2)", borderRadius: "12px", border: "1px solid var(--glass-border)" }}>
-                      <svg viewBox="0 0 400 300" width="100%" height="auto" style={{ overflow: "visible" }}>
+                    <div style={{ width: "100%", maxWidth: "340px", padding: "8px", background: "rgba(0,0,0,0.3)", borderRadius: "12px", border: "1px solid var(--glass-border)", position: "relative" }}>
+                      <svg viewBox="0 0 400 300" width="100%" height="auto" className="lga-map-svg">
+                        <defs>
+                          <radialGradient id="radarGlow" cx="50%" cy="50%" r="50%">
+                            <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.2" />
+                            <stop offset="100%" stopColor="transparent" stopOpacity="0" />
+                          </radialGradient>
+                          <linearGradient id="radarSweepGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.4" />
+                            <stop offset="100%" stopColor="transparent" stopOpacity="0" />
+                          </linearGradient>
+                        </defs>
+
+                        {/* Radar Background Glow */}
+                        <circle cx="200" cy="130" r="120" fill="url(#radarGlow)" />
+
+                        {/* Concentric Radar Rings */}
+                        <circle cx="200" cy="130" r="40" className="lga-radar-ring" strokeDasharray="3,6" />
+                        <circle cx="200" cy="130" r="80" className="lga-radar-ring" strokeDasharray="4,8" />
+                        <circle cx="200" cy="130" r="120" className="lga-radar-ring" />
+                        <circle cx="200" cy="130" r="160" className="lga-radar-ring" strokeDasharray="5,10" />
+
+                        {/* Radar Grid Crosshairs */}
+                        <line x1="40" y1="130" x2="360" y2="130" className="lga-radar-grid" strokeDasharray="4,4" />
+                        <line x1="200" y1="10" x2="200" y2="250" className="lga-radar-grid" strokeDasharray="4,4" />
+
+                        {/* Rotating Radar Sweep Line */}
+                        <line x1="200" y1="130" x2="200" y2="10" className="lga-radar-sweep" />
+
+                        {/* Connections from center (Uyo) */}
+                        {[
+                          { name: "Ini", x: 200, y: 35 },
+                          { name: "Ikot Ekpene", x: 110, y: 80 },
+                          { name: "Itu", x: 210, y: 85 },
+                          { name: "Abak", x: 110, y: 140 },
+                          { name: "Mkpat Enin", x: 100, y: 210 },
+                          { name: "Eket", x: 200, y: 230 },
+                          { name: "Oron", x: 290, y: 190 }
+                        ].map((l, idx) => (
+                          <line
+                            key={idx}
+                            x1={l.x}
+                            y1={l.y}
+                            x2={200}
+                            y2={130}
+                            stroke={selectedLga === l.name ? "var(--primary-light)" : "rgba(16, 185, 129, 0.15)"}
+                            strokeWidth={selectedLga === l.name ? 1.5 : 1}
+                            strokeDasharray="4,4"
+                          />
+                        ))}
+
+                        {/* LGA Nodes */}
                         {[
                           { name: "Ini", color: "#10b981", x: 200, y: 35 },
                           { name: "Ikot Ekpene", color: "#f59e0b", x: 110, y: 80 },
@@ -416,60 +501,54 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
                           { name: "Mkpat Enin", color: "#10b981", x: 100, y: 210 },
                           { name: "Eket", color: "#0ea5e9", x: 200, y: 230 },
                           { name: "Oron", color: "#f59e0b", x: 290, y: 190 }
-                        ].map((l, i) => {
-                          if (l.name === "Uyo") return null;
+                        ].map((item) => {
+                          const isSelected = selectedLga === item.name;
                           return (
-                            <line 
-                              key={i} 
-                              x1={l.x} 
-                              y1={l.y} 
-                              x2={200} 
-                              y2={130} 
-                              stroke="rgba(16, 185, 129, 0.15)" 
-                              strokeWidth="1" 
-                              strokeDasharray="4,4" 
-                            />
+                            <g
+                              key={item.name}
+                              style={{ cursor: "pointer" }}
+                              onClick={() => {
+                                setSelectedLga(selectedLga === item.name ? "All" : item.name);
+                              }}
+                            >
+                              {/* Pulsing ring under selected marker */}
+                              {isSelected && (
+                                <circle
+                                  cx={item.x}
+                                  cy={item.y}
+                                  r={18}
+                                  fill="none"
+                                  stroke="var(--primary)"
+                                  className="lga-marker-pulse"
+                                />
+                              )}
+                              {/* Main Circle Marker */}
+                              <circle
+                                cx={item.x}
+                                cy={item.y}
+                                r={isSelected ? 10 : 7}
+                                fill={isSelected ? "var(--primary)" : "rgba(10, 22, 15, 0.9)"}
+                                stroke={isSelected ? "#fff" : item.color}
+                                strokeWidth="2"
+                                style={{ transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)" }}
+                              />
+                              <text
+                                x={item.x}
+                                y={item.y - 12}
+                                textAnchor="middle"
+                                fill={isSelected ? "#fff" : "var(--gray-600)"}
+                                fontSize="9"
+                                fontWeight={isSelected ? "800" : "600"}
+                                style={{
+                                  textShadow: isSelected ? "0 0 8px rgba(16, 185, 129, 0.6)" : "none",
+                                  transition: "all 0.3s"
+                                }}
+                              >
+                                {item.name}
+                              </text>
+                            </g>
                           );
                         })}
-
-                        {[
-                          { name: "Ini", color: "#10b981", x: 200, y: 35 },
-                          { name: "Ikot Ekpene", color: "#f59e0b", x: 110, y: 80 },
-                          { name: "Itu", color: "#10b981", x: 210, y: 85 },
-                          { name: "Uyo", color: "#0ea5e9", x: 200, y: 130 },
-                          { name: "Abak", color: "#f59e0b", x: 110, y: 140 },
-                          { name: "Mkpat Enin", color: "#10b981", x: 100, y: 210 },
-                          { name: "Eket", color: "#0ea5e9", x: 200, y: 230 },
-                          { name: "Oron", color: "#f59e0b", x: 290, y: 190 }
-                        ].map((item) => (
-                          <g 
-                            key={item.name} 
-                            style={{ cursor: "pointer" }} 
-                            onClick={() => {
-                              setSelectedLga(selectedLga === item.name ? "All" : item.name);
-                            }}
-                          >
-                            <circle 
-                              cx={item.x} 
-                              cy={item.y} 
-                              r={selectedLga === item.name ? 14 : 9} 
-                              fill={selectedLga === item.name ? "var(--primary)" : "rgba(255, 255, 255, 0.05)"} 
-                              stroke={selectedLga === item.name ? "white" : item.color} 
-                              strokeWidth="1.5" 
-                              style={{ transition: "all 0.2s" }}
-                            />
-                            <text 
-                              x={item.x} 
-                              y={item.y - 12} 
-                              textAnchor="middle" 
-                              fill={selectedLga === item.name ? "white" : "var(--gray-600)"} 
-                              fontSize="8" 
-                              fontWeight={selectedLga === item.name ? "bold" : "normal"}
-                            >
-                              {item.name}
-                            </text>
-                          </g>
-                        ))}
                       </svg>
                     </div>
                     {selectedLga !== "All" && (
@@ -510,49 +589,66 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
               >
                 {sortedProducts.map(product => {
                   const farmer = getFarmerDetails(product.farmerId);
+                  
+                  // Calculate dynamic badges
+                  let badge = null;
+                  if (product.quantity < 10) {
+                    badge = <span className="product-card-badge last-units">Low Stock ({product.quantity})</span>;
+                  } else if (product.organic) {
+                    badge = <span className="product-card-badge fresh">Organic Fresh</span>;
+                  } else {
+                    badge = <span className="product-card-badge limited">Direct Farm</span>;
+                  }
+
                   return (
                     <motion.div 
                       key={product.id} 
                       variants={cardFadeIn}
                       className="product-card"
+                      whileHover={{ y: -6, transition: { duration: 0.2 } }}
                     >
                       <div className="product-img-wrapper">
                         <img src={product.image} alt={product.name} className="product-img" />
-                        {product.organic && <span className="product-organic-badge">Organic</span>}
+                        {badge}
                         <div className="product-farmer-badge">
                           <img 
                             src={farmer.avatar} 
                             alt={farmer.name} 
                             className="avatar-small" 
-                            style={{ border: "2px solid var(--white)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)" }} 
+                            style={{ border: "2px solid var(--white)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)", cursor: "pointer" }} 
+                            onClick={() => setSelectedFarmer(farmer)}
+                            title={`View profile of ${farmer.name}`}
                           />
                         </div>
                       </div>
                       
                       <div className="product-details">
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
                           <span className="product-cat">{product.category}</span>
-                          <span style={{ fontSize: "0.8rem", color: "var(--primary)" }}>📍 {product.lga}</span>
+                          <span style={{ fontSize: "0.8rem", color: "var(--primary)", fontWeight: "600" }}>📍 {product.lga}</span>
                         </div>
                         <h4 className="product-name">{product.name}</h4>
                         
                         <div className="product-meta">
-                          <span>Farmer: <strong>{farmer.name}</strong></span>
-                          <span style={{ display: "flex", alignItems: "center", gap: "2px", color: "var(--secondary-light)" }}>
-                            <Star size={12} fill="currentColor" /> {farmer.rating || "5.0"}
+                          <span style={{ cursor: "pointer" }} onClick={() => setSelectedFarmer(farmer)}>
+                            Farmer: <strong style={{ color: "white" }}>{farmer.name}</strong>
+                          </span>
+                          <span className="product-rating-compact" style={{ cursor: "pointer" }} onClick={() => setSelectedFarmer(farmer)}>
+                            <Star size={12} fill="currentColor" /> {farmer.rating || "5.0"} ({farmer.reviewsCount || 0})
                           </span>
                         </div>
 
-                        <p style={{ fontSize: "0.85rem", color: "var(--gray-600)", marginBottom: "16px", flex: 1, lineHeight: 1.4 }}>
+                        <p style={{ fontSize: "0.82rem", color: "var(--gray-600)", marginBottom: "16px", flex: 1, lineHeight: 1.45 }}>
                           {product.description.length > 80 ? product.description.substring(0, 85) + "..." : product.description}
                         </p>
 
                         <div className="product-price-row">
                           <div className="product-price">
-                            ₦{product.price.toLocaleString()} <span>/ {product.unit}</span>
+                            ₦{product.price.toLocaleString()} <span style={{ fontSize: "0.8rem", color: "var(--gray-600)" }}>/ {product.unit}</span>
                           </div>
                           <button 
                             className="btn btn-primary btn-sm"
+                            style={{ padding: "8px 16px", borderRadius: "20px", fontWeight: "800" }}
                             onClick={() => {
                               if (!activeUser) {
                                 onSwitchView("auth");
@@ -946,235 +1042,377 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
                 </div>
               )}
 
-              <div className="modal-header">
-                <h3>Invoice & Escrow Payment</h3>
-                <button onClick={() => setCurrentInvoice(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "white" }}><X size={20} /></button>
-              </div>
-
-              <p style={{ fontSize: "0.85rem", color: "var(--gray-600)", marginBottom: "16px" }}>
-                Order request has been approved by the farmer. Choose a payment method to lock the funds in Escrow.
-              </p>
-
-              {/* Invoice Summary Box */}
-              <div className="invoice-box" style={{ background: "rgba(0,0,0,0.2)", padding: "16px", borderRadius: "10px", border: "1px solid var(--glass-border)", marginBottom: "20px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "0.85rem" }}>
-                  <span>Order ID:</span>
-                  <strong style={{ color: "white" }}>{currentInvoice.id}</strong>
+              {paymentSuccess ? (
+                /* Payment Success View */
+                <div className="success-checkmark-wrapper">
+                  <div className="checkmark-circle">
+                    <CheckCircle2 size={44} className="checkmark-icon" />
+                  </div>
+                  <h3 style={{ marginTop: "24px", color: "white", fontSize: "1.4rem" }}>Payment Secured!</h3>
+                  <p style={{ color: "var(--gray-600)", fontSize: "0.88rem", textAlign: "center", marginTop: "8px", lineHeight: 1.5 }}>
+                    ₦{currentInvoice.totalAmount.toLocaleString()} is now locked in Sterling Bank Cooperative Escrow. The farmer has been notified and is preparing your produce.
+                  </p>
+                  <div style={{ display: "flex", gap: "12px", width: "100%", marginTop: "28px" }}>
+                    <button 
+                      className="btn btn-outline" 
+                      style={{ flex: 1 }}
+                      onClick={() => {
+                        setPaymentSuccess(false);
+                        setCurrentInvoice(null);
+                      }}
+                    >
+                      Close Window
+                    </button>
+                    <button 
+                      className="btn btn-primary" 
+                      style={{ flex: 1.5 }}
+                      onClick={() => {
+                        setPaymentSuccess(false);
+                        const trackingOrder = currentInvoice;
+                        setCurrentInvoice(null);
+                        setSelectedOrderForTracking(trackingOrder);
+                        setActiveTab("my_orders");
+                      }}
+                    >
+                      Track Order Request
+                    </button>
+                  </div>
                 </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "0.85rem" }}>
-                  <span>Product Name:</span>
-                  <span style={{ color: "white" }}>{currentInvoice.productName} ({currentInvoice.quantity} Units)</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "0.85rem" }}>
-                  <span>Farmer:</span>
-                  <span style={{ color: "white" }}>{currentInvoice.farmerName}</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px dashed var(--glass-border)", paddingTop: "8px", marginTop: "8px", fontWeight: "bold", fontSize: "1.1rem", color: "var(--secondary-light)" }}>
-                  <span>Amount Due:</span>
-                  <span>₦{currentInvoice.totalAmount.toLocaleString()}</span>
-                </div>
-              </div>
+              ) : (
+                /* Payment Form View */
+                <>
+                  <div className="modal-header">
+                    <h3>Invoice & Escrow Payment</h3>
+                    <button onClick={() => setCurrentInvoice(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "white" }}><X size={20} /></button>
+                  </div>
 
-              {/* Gateway Tabs */}
-              <div style={{ display: "flex", borderBottom: "1px solid var(--glass-border)", marginBottom: "20px" }}>
-                <button 
-                  onClick={() => setPaymentMethod("card")}
-                  style={{ 
-                    flex: 1, 
-                    padding: "10px", 
-                    background: "none", 
-                    border: "none", 
-                    color: paymentMethod === "card" ? "var(--primary)" : "var(--gray-600)", 
-                    borderBottom: paymentMethod === "card" ? "2px solid var(--primary)" : "none",
-                    fontWeight: "bold",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px"
-                  }}
-                >
-                  <CreditCard size={16} /> Pay via Card
-                </button>
-                <button 
-                  onClick={() => setPaymentMethod("transfer")}
-                  style={{ 
-                    flex: 1, 
-                    padding: "10px", 
-                    background: "none", 
-                    border: "none", 
-                    color: paymentMethod === "transfer" ? "var(--primary)" : "var(--gray-600)", 
-                    borderBottom: paymentMethod === "transfer" ? "2px solid var(--primary)" : "none",
-                    fontWeight: "bold",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px"
-                  }}
-                >
-                  <FileText size={16} /> Bank Transfer
-                </button>
-              </div>
+                  <p style={{ fontSize: "0.85rem", color: "var(--gray-600)", marginBottom: "16px" }}>
+                    Order request has been approved by the farmer. Choose a payment method to lock the funds in Escrow.
+                  </p>
 
-              <form onSubmit={handlePaymentSubmit}>
-                {paymentMethod === "card" ? (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
-                    <div className="form-field">
-                      <label>Card Number *</label>
-                      <input 
-                        type="text" 
-                        placeholder="4242 •••• •••• 4242" 
-                        value={cardNumber}
-                        onChange={(e) => setCardNumber(e.target.value.replace(/\s?/g, '').replace(/(\d{4})/g, '$1 ').trim().substring(0, 19))}
-                        required 
-                      />
+                  {/* Invoice Summary Box */}
+                  <div className="invoice-box" style={{ background: "rgba(0,0,0,0.2)", padding: "16px", borderRadius: "10px", border: "1px solid var(--glass-border)", marginBottom: "20px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "0.85rem" }}>
+                      <span>Order ID:</span>
+                      <strong style={{ color: "white" }}>{currentInvoice.id}</strong>
                     </div>
-                    <div className="form-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: 0 }}>
-                      <div className="form-field">
-                        <label>Expiry Date *</label>
-                        <input 
-                          type="text" 
-                          placeholder="MM/YY" 
-                          value={cardExpiry}
-                          onChange={(e) => setCardExpiry(e.target.value.substring(0, 5))}
-                          required 
-                        />
-                      </div>
-                      <div className="form-field">
-                        <label>CVV *</label>
-                        <input 
-                          type="password" 
-                          placeholder="•••" 
-                          value={cardCvc}
-                          onChange={(e) => setCardCvc(e.target.value.substring(0, 3))}
-                          required 
-                        />
-                      </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "0.85rem" }}>
+                      <span>Product Name:</span>
+                      <span style={{ color: "white" }}>{currentInvoice.productName} ({currentInvoice.quantity} Units)</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "0.85rem" }}>
+                      <span>Farmer:</span>
+                      <span style={{ color: "white" }}>{currentInvoice.farmerName}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px dashed var(--glass-border)", paddingTop: "8px", marginTop: "8px", fontWeight: "bold", fontSize: "1.1rem", color: "var(--secondary-light)" }}>
+                      <span>Amount Due:</span>
+                      <span>₦{currentInvoice.totalAmount.toLocaleString()}</span>
                     </div>
                   </div>
-                ) : (
-                  <div style={{ background: "rgba(255,255,255,0.02)", padding: "16px", borderRadius: "10px", border: "1px solid var(--glass-border)", marginBottom: "20px" }}>
-                    <small style={{ color: "var(--gray-600)", textTransform: "uppercase", fontSize: "0.7rem", fontWeight: "bold" }}>Escrow virtual Account details</small>
-                    <div style={{ marginTop: "10px" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                        <span style={{ color: "var(--gray-600)" }}>Bank Name:</span>
-                        <strong style={{ color: "white" }}>Sterling Bank (Ibom Escrow)</strong>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                        <span style={{ color: "var(--gray-600)" }}>Account Name:</span>
-                        <strong style={{ color: "white" }}>Ibom Agro Market Escrow Ltd</strong>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span style={{ color: "var(--gray-600)" }}>Account Number:</span>
-                        <strong style={{ color: "var(--primary)", fontSize: "1.1rem" }}>9032 8402 93</strong>
+
+                  {/* Gateway Tabs */}
+                  <div style={{ display: "flex", borderBottom: "1px solid var(--glass-border)", marginBottom: "20px" }}>
+                    <button 
+                      onClick={() => setPaymentMethod("card")}
+                      style={{ 
+                        flex: 1, 
+                        padding: "10px", 
+                        background: "none", 
+                        border: "none", 
+                        color: paymentMethod === "card" ? "var(--primary)" : "var(--gray-600)", 
+                        borderBottom: paymentMethod === "card" ? "2px solid var(--primary)" : "none",
+                        fontWeight: "bold",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "6px"
+                      }}
+                    >
+                      <CreditCard size={16} /> Pay via Card
+                    </button>
+                    <button 
+                      onClick={() => setPaymentMethod("transfer")}
+                      style={{ 
+                        flex: 1, 
+                        padding: "10px", 
+                        background: "none", 
+                        border: "none", 
+                        color: paymentMethod === "transfer" ? "var(--primary)" : "var(--gray-600)", 
+                        borderBottom: paymentMethod === "transfer" ? "2px solid var(--primary)" : "none",
+                        fontWeight: "bold",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: "6px"
+                      }}
+                    >
+                      <FileText size={16} /> Bank Transfer
+                    </button>
+                  </div>
+
+                  {/* Live Credit Card Mockup */}
+                  {paymentMethod === "card" && (
+                    <div className="credit-card-container">
+                      <div className="credit-card-preview">
+                        <div className="credit-card-top">
+                          <span className="credit-card-logo">IBOM ESCROW CARD</span>
+                          <div className="credit-card-chip"></div>
+                        </div>
+                        <div className="credit-card-mid">
+                          <div className="credit-card-number">
+                            {cardNumber || "•••• •••• •••• ••••"}
+                          </div>
+                        </div>
+                        <div className="credit-card-bottom">
+                          <div>
+                            <div className="credit-card-label">Card Holder</div>
+                            <div className="credit-card-val" style={{ maxWidth: "150px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {cardName || "YOUR FULL NAME"}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: "16px" }}>
+                            <div>
+                              <div className="credit-card-label">Expires</div>
+                              <div className="credit-card-val">{cardExpiry || "MM/YY"}</div>
+                            </div>
+                            <div>
+                              <div className="credit-card-label">CVV</div>
+                              <div className="credit-card-val">{cardCvc ? "•••" : "000"}</div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <p style={{ fontSize: "0.75rem", color: "var(--gray-600)", marginTop: "12px", lineHeight: 1.4 }}>
-                      ⚠️ Funds transferred here are securely held in cooperative escrow and are released to the farmer only when you confirm receipt of fresh produce.
-                    </p>
-                  </div>
-                )}
+                  )}
 
-                <div style={{ display: "flex", gap: "12px" }}>
-                  <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => setCurrentInvoice(null)}>Cancel</button>
-                  <button type="submit" className="btn btn-secondary" style={{ flex: 2 }}>
-                    {paymentMethod === "card" ? `Pay ₦${currentInvoice.totalAmount.toLocaleString()}` : "Confirm Bank Transfer"}
-                  </button>
-                </div>
-              </form>
+                  <form onSubmit={handlePaymentSubmit}>
+                    {paymentMethod === "card" ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
+                        <div className="form-grid" style={{ gridTemplateColumns: "1.2fr 0.8fr", gap: "10px", marginBottom: 0 }}>
+                          <div className="form-field">
+                            <label>Card Number *</label>
+                            <input 
+                              type="text" 
+                              placeholder="4242 •••• •••• 4242" 
+                              value={cardNumber}
+                              onChange={(e) => setCardNumber(e.target.value.replace(/\s?/g, '').replace(/(\d{4})/g, '$1 ').trim().substring(0, 19))}
+                              required 
+                            />
+                          </div>
+                          <div className="form-field">
+                            <label>Cardholder Name *</label>
+                            <input 
+                              type="text" 
+                              placeholder="E.g. Chef Bassey" 
+                              value={cardName}
+                              onChange={(e) => setCardName(e.target.value)}
+                              required 
+                            />
+                          </div>
+                        </div>
+                        <div className="form-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: 0 }}>
+                          <div className="form-field">
+                            <label>Expiry Date *</label>
+                            <input 
+                              type="text" 
+                              placeholder="MM/YY" 
+                              value={cardExpiry}
+                              onChange={(e) => setCardExpiry(e.target.value.substring(0, 5))}
+                              required 
+                            />
+                          </div>
+                          <div className="form-field">
+                            <label>CVV *</label>
+                            <input 
+                              type="password" 
+                              placeholder="•••" 
+                              value={cardCvc}
+                              onChange={(e) => setCardCvc(e.target.value.substring(0, 3))}
+                              required 
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ background: "rgba(255,255,255,0.02)", padding: "16px", borderRadius: "10px", border: "1px solid var(--glass-border)", marginBottom: "20px" }}>
+                        <small style={{ color: "var(--gray-600)", textTransform: "uppercase", fontSize: "0.7rem", fontWeight: "bold" }}>Escrow virtual Account details</small>
+                        <div style={{ marginTop: "10px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontSize: "0.85rem" }}>
+                            <span style={{ color: "var(--gray-600)" }}>Bank Name:</span>
+                            <strong style={{ color: "white" }}>Sterling Bank (Ibom Escrow)</strong>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px", fontSize: "0.85rem" }}>
+                            <span style={{ color: "var(--gray-600)" }}>Account Name:</span>
+                            <strong style={{ color: "white" }}>Ibom Agro Market Escrow Ltd</strong>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px dashed rgba(255,255,255,0.1)", paddingTop: "8px", marginTop: "8px" }}>
+                            <span style={{ color: "var(--gray-600)", fontSize: "0.85rem" }}>Account Number:</span>
+                            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                              <strong style={{ color: "var(--primary)", fontSize: "1.15rem" }}>9032840293</strong>
+                              <button 
+                                type="button"
+                                className="icon-badge-btn" 
+                                style={{ padding: "5px", borderRadius: "6px" }}
+                                onClick={() => {
+                                  navigator.clipboard.writeText("9032840293");
+                                  alert("Account Number Copied!");
+                                }}
+                                title="Copy Account Number"
+                              >
+                                <Copy size={12} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                        <p style={{ fontSize: "0.75rem", color: "var(--gray-600)", marginTop: "12px", lineHeight: 1.4 }}>
+                          ⚠️ Funds transferred here are securely held in cooperative escrow and are released to the farmer only when you confirm receipt of fresh produce.
+                        </p>
+                      </div>
+                    )}
+
+                    <div style={{ display: "flex", gap: "12px" }}>
+                      <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => setCurrentInvoice(null)}>Cancel</button>
+                      <button type="submit" className="btn btn-secondary" style={{ flex: 2 }}>
+                        {paymentMethod === "card" ? `Pay ₦${currentInvoice.totalAmount.toLocaleString()}` : "Confirm Bank Transfer"}
+                      </button>
+                    </div>
+                  </form>
+                </>
+              )}
             </motion.div>
           </motion.div>
         )}
 
         {/* Realtime Order Progress Tracker Modal */}
-        {selectedOrderForTracking && (
-          <motion.div 
-            className="modal-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
+        {selectedOrderForTracking && (() => {
+          const ORDER_STATUS_STEPS = [
+            { status: "Requested", label: "Order Submitted", desc: "Farmer received purchase invoice request", icon: <FileText size={14} /> },
+            { status: "Paid", label: "Escrow Secured", desc: "Funds locked in Sterling Cooperative Escrow", icon: <CreditCard size={14} /> },
+            { status: "Assigned", label: "Carrier Assigned", desc: "Logistics courier partner accepted shipment", icon: <User size={14} /> },
+            { status: "Picked Up", label: "Picked Up", desc: "Cargo claimed and loaded by carrier", icon: <Package size={14} /> },
+            { status: "En Route", label: "En Route", desc: "Courier is transporting cargo to destination", icon: <Truck size={14} /> },
+            { status: "Delivered", label: "Delivered", desc: "Produce arrived at dropsite. Awaiting release", icon: <MapPin size={14} /> },
+            { status: "Completed", label: "Escrow Released", desc: "Escrow funds disbursed to farmer. Completed!", icon: <CheckCircle2 size={14} /> }
+          ];
+
+          const getStepIndex = (status) => {
+            if (status === "Reviewed") return 6;
+            return ORDER_STATUS_STEPS.findIndex(step => step.status === status);
+          };
+
+          const currentIdx = getStepIndex(selectedOrderForTracking.status);
+          const progressHeight = `${(currentIdx / (ORDER_STATUS_STEPS.length - 1)) * 100}%`;
+
+          return (
             <motion.div 
-              className="modal-content" 
-              style={{ maxWidth: "550px" }}
-              initial={{ scale: 0.9, y: 15 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 15 }}
-              transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              className="modal-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
             >
-              <div className="modal-header">
-                <h3>Escrow Order Tracking</h3>
-                <button onClick={() => setSelectedOrderForTracking(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "white" }}><X size={20} /></button>
-              </div>
+              <motion.div 
+                className="modal-content" 
+                style={{ maxWidth: "550px" }}
+                initial={{ scale: 0.9, y: 15 }}
+                animate={{ scale: 1, y: 0 }}
+                exit={{ scale: 0.9, y: 15 }}
+                transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              >
+                <div className="modal-header">
+                  <h3>Escrow Order Tracking</h3>
+                  <button onClick={() => setSelectedOrderForTracking(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "white" }}><X size={20} /></button>
+                </div>
 
-              <div className="invoice-box" style={{ background: "rgba(0,0,0,0.15)", border: "1px solid var(--glass-border)", padding: "14px", borderRadius: "10px", marginBottom: "20px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                  <span>Order ID:</span>
-                  <strong style={{ color: "white" }}>#{selectedOrderForTracking.id}</strong>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                  <span>Item:</span>
-                  <span style={{ color: "white" }}>{selectedOrderForTracking.productName} ({selectedOrderForTracking.quantity} Units)</span>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
-                  <span>Escrow Amount:</span>
-                  <strong style={{ color: "var(--secondary-light)" }}>₦{selectedOrderForTracking.totalAmount.toLocaleString()}</strong>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>Carrier Partner:</span>
-                  <span style={{ color: "white" }}>{selectedOrderForTracking.deliveryPartnerName || "Assigning Carrier..."}</span>
-                </div>
-              </div>
-
-              {/* Realtime Stepper */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "20px", margin: "24px 0", paddingLeft: "10px", borderLeft: "2px solid rgba(255,255,255,0.05)", marginLeft: "14px", position: "relative" }}>
-                {[
-                  { key: "Requested", label: "Order Submitted", desc: "Farmer received purchase invoice request", active: true },
-                  { key: "Paid", label: "Escrow Payment Secured", desc: "Funds locked in Sterling Cooperative Escrow", active: ["Paid", "Assigned", "Picked Up", "En Route", "Delivered", "Completed", "Reviewed"].includes(selectedOrderForTracking.status) },
-                  { key: "Assigned", label: "Produce Dispatched", desc: "Farmer prepared cargo for pickup", active: ["Assigned", "Picked Up", "En Route", "Delivered", "Completed", "Reviewed"].includes(selectedOrderForTracking.status) },
-                  { key: "Picked Up", label: "Picked Up by Carrier", desc: "Logistics partner claimed and loaded produce", active: ["Picked Up", "En Route", "Delivered", "Completed", "Reviewed"].includes(selectedOrderForTracking.status) },
-                  { key: "En Route", label: "En Route to drop-off", desc: "Carrier is delivering packages to your town", active: ["En Route", "Delivered", "Completed", "Reviewed"].includes(selectedOrderForTracking.status) },
-                  { key: "Delivered", label: "Delivered", desc: "Produce arrived at dropsite. Awaiting your release", active: ["Delivered", "Completed", "Reviewed"].includes(selectedOrderForTracking.status) },
-                  { key: "Completed", label: "Escrow Released", desc: "Payment disbursed to farmer's wallet. Complete!", active: ["Completed", "Reviewed"].includes(selectedOrderForTracking.status) }
-                ].map((step, idx) => (
-                  <div key={idx} style={{ position: "relative", paddingLeft: "20px" }}>
-                    {/* Circle Node */}
-                    <div style={{ 
-                      position: "absolute", 
-                      left: "-27px", 
-                      top: "2px", 
-                      width: "12px", 
-                      height: "12px", 
-                      borderRadius: "50%", 
-                      background: step.active ? "var(--primary)" : "rgba(255,255,255,0.05)",
-                      border: `2px solid ${step.active ? "white" : "var(--glass-border)"}`,
-                      boxShadow: step.active ? "0 0 8px var(--primary)" : "none",
-                      transition: "all 0.3s"
-                    }}></div>
-                    <div style={{ display: "flex", flexDirection: "column" }}>
-                      <strong style={{ color: step.active ? "white" : "var(--gray-600)", fontSize: "0.9rem" }}>{step.label}</strong>
-                      <span style={{ fontSize: "0.75rem", color: "var(--gray-600)", marginTop: "2px" }}>{step.desc}</span>
-                    </div>
+                <div className="invoice-box" style={{ background: "rgba(0,0,0,0.15)", border: "1px solid var(--glass-border)", padding: "14px", borderRadius: "10px", marginBottom: "20px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+                    <span>Order ID:</span>
+                    <strong style={{ color: "white" }}>#{selectedOrderForTracking.id}</strong>
                   </div>
-                ))}
-              </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+                    <span>Item:</span>
+                    <span style={{ color: "white" }}>{selectedOrderForTracking.productName} ({selectedOrderForTracking.quantity} Units)</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "6px" }}>
+                    <span>Escrow Amount:</span>
+                    <strong style={{ color: "var(--secondary-light)" }}>₦{selectedOrderForTracking.totalAmount.toLocaleString()}</strong>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Carrier Partner:</span>
+                    <span style={{ color: "white" }}>{selectedOrderForTracking.deliveryPartnerName || "Assigning Carrier..."}</span>
+                  </div>
+                </div>
 
-              <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
-                <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setSelectedOrderForTracking(null)}>Close</button>
-                {selectedOrderForTracking.status === "Delivered" && (
-                  <button 
-                    className="btn btn-primary" 
-                    style={{ flex: 2 }}
-                    onClick={() => handleConfirmReceipt(selectedOrderForTracking.id)}
-                  >
-                    Confirm Handover & Release Escrow
-                  </button>
-                )}
-              </div>
+                {/* Realtime Stepper Timeline */}
+                <div className="timeline-stepper">
+                  <div 
+                    className="timeline-stepper-progress" 
+                    style={{ height: progressHeight }} 
+                  />
+                  
+                  {ORDER_STATUS_STEPS.map((step, idx) => {
+                    const isCompleted = idx < currentIdx;
+                    const isActive = idx === currentIdx;
+                    
+                    let stepClass = "timeline-step";
+                    if (isActive) stepClass += " active";
+                    else if (isCompleted) stepClass += " completed";
+                    else stepClass += " pending";
+                    
+                    return (
+                      <div key={idx} className={stepClass}>
+                        <div className="timeline-node">
+                          {isActive ? (
+                            <div style={{ color: "var(--dark)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              {step.icon}
+                            </div>
+                          ) : isCompleted ? (
+                            <div style={{ color: "var(--primary-light)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <Check size={12} />
+                            </div>
+                          ) : (
+                            <div style={{ color: "var(--gray-600)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              {step.icon}
+                            </div>
+                          )}
+                        </div>
+                        <div className="timeline-content">
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                            <strong style={{ color: isActive ? "white" : isCompleted ? "var(--gray-800)" : "var(--gray-600)", fontSize: "0.95rem" }}>
+                              {step.label}
+                            </strong>
+                            {isActive && (
+                              <span style={{ fontSize: "0.7rem", background: "rgba(16, 185, 129, 0.15)", color: "var(--primary-light)", padding: "2px 8px", borderRadius: "10px", fontWeight: "bold" }}>
+                                Current
+                              </span>
+                            )}
+                          </div>
+                          <span style={{ fontSize: "0.78rem", color: "var(--gray-600)", marginTop: "4px", display: "block" }}>
+                            {step.desc}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
+                  <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setSelectedOrderForTracking(null)}>Close</button>
+                  {selectedOrderForTracking.status === "Delivered" && (
+                    <button 
+                      className="btn btn-primary" 
+                      style={{ flex: 2 }}
+                      onClick={() => handleConfirmReceipt(selectedOrderForTracking.id)}
+                    >
+                      Confirm Handover & Release Escrow
+                    </button>
+                  )}
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
+          );
+        })()}
 
         {/* Farmer Detailed View Modal */}
         {selectedFarmer && (
@@ -1197,56 +1435,71 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
               </div>
 
               <div style={{ position: "relative", marginBottom: "24px" }}>
-                <img src={selectedFarmer.banner} alt="" style={{ width: "100%", height: "160px", objectFit: "cover", borderRadius: "12px" }} />
+                <img src={selectedFarmer.banner} alt="" style={{ width: "100%", height: "160px", objectFit: "cover", borderRadius: "12px", border: "1px solid var(--glass-border)" }} />
                 <img 
                   src={selectedFarmer.avatar} 
                   alt="" 
                   style={{ 
-                    width: "70px", 
-                    height: "70px", 
+                    width: "75px", 
+                    height: "75px", 
                     borderRadius: "50%", 
                     objectFit: "cover", 
                     position: "absolute", 
                     bottom: "-30px", 
                     left: "20px",
                     border: "3px solid var(--dark-light)",
-                    boxShadow: "0 4px 10px rgba(0,0,0,0.3)"
+                    boxShadow: "0 6px 16px rgba(0,0,0,0.4)"
                   }} 
                 />
               </div>
 
-              <div style={{ paddingLeft: "100px", minHeight: "36px", marginBottom: "20px" }}>
-                <h4 style={{ margin: 0, fontSize: "1.3rem" }}>{selectedFarmer.name}</h4>
-                <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap", marginTop: "4px" }}>
+              <div style={{ paddingLeft: "105px", minHeight: "36px", marginBottom: "24px" }}>
+                <h4 style={{ margin: 0, fontSize: "1.35rem" }}>{selectedFarmer.name}</h4>
+                <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", marginTop: "6px" }}>
                   {getVerificationIcon(selectedFarmer.verification)}
-                  <span style={{ fontSize: "0.8rem", color: "var(--gray-600)" }}>{selectedFarmer.followers} Followers</span>
+                  <span style={{ fontSize: "0.8rem", color: "var(--gray-600)", background: "rgba(255,255,255,0.03)", padding: "2px 8px", borderRadius: "10px", border: "1px solid var(--glass-border)" }}>
+                    {selectedFarmer.followers} Followers
+                  </span>
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
-                <div className="card" style={{ padding: "14px" }}>
-                  <small style={{ color: "var(--gray-600)" }}>Years of Farming</small>
-                  <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "var(--primary)" }}>{selectedFarmer.yearsFarming} Years</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "24px" }}>
+                <div className="card" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <small style={{ color: "var(--gray-600)", fontWeight: "600" }}>Years of Farming</small>
+                  <div style={{ fontSize: "1.2rem", fontWeight: "800", color: "var(--primary-light)" }}>{selectedFarmer.yearsFarming} Years</div>
                 </div>
-                <div className="card" style={{ padding: "14px" }}>
-                  <small style={{ color: "var(--gray-600)" }}>LGA / Location</small>
-                  <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "var(--primary)" }}>{selectedFarmer.town}, {selectedFarmer.lga}</div>
+                <div className="card" style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                  <small style={{ color: "var(--gray-600)", fontWeight: "600" }}>LGA / Location</small>
+                  <div style={{ fontSize: "1.2rem", fontWeight: "800", color: "var(--primary-light)" }}>{selectedFarmer.town}, {selectedFarmer.lga}</div>
                 </div>
               </div>
 
-              <div style={{ marginBottom: "20px" }}>
-                <h5 style={{ marginBottom: "4px" }}>Farmer Bio</h5>
-                <p style={{ fontSize: "0.9rem", color: "var(--gray-800)", lineHeight: 1.5 }}>{selectedFarmer.bio}</p>
+              <div style={{ marginBottom: "24px" }}>
+                <h5 style={{ marginBottom: "6px", fontSize: "0.95rem", color: "white" }}>Farmer Bio</h5>
+                <p style={{ fontSize: "0.88rem", color: "var(--gray-800)", lineHeight: 1.55 }}>{selectedFarmer.bio}</p>
               </div>
 
               {selectedFarmer.harvestCalendar && selectedFarmer.harvestCalendar.length > 0 && (
-                <div style={{ marginBottom: "24px" }}>
-                  <h5 style={{ marginBottom: "8px" }}>Harvest Calendar</h5>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <div style={{ marginBottom: "28px" }}>
+                  <h5 style={{ marginBottom: "10px", fontSize: "0.95rem", color: "white" }}>Harvest Calendar Milestones</h5>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                     {selectedFarmer.harvestCalendar.map(cal => (
-                      <div key={cal.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", border: "1px solid var(--glass-border)", background: "rgba(255,255,255,0.02)", borderRadius: "8px", fontSize: "0.85rem" }}>
-                        <span><strong style={{ color: "white" }}>{cal.product}</strong> ({cal.month})</span>
-                        <span style={{ color: "var(--secondary)", fontWeight: "bold" }}>{cal.status}</span>
+                      <div key={cal.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px", border: "1px solid var(--glass-border)", background: "rgba(255,255,255,0.02)", borderRadius: "10px", fontSize: "0.85rem" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <Sprout size={14} style={{ color: "var(--primary-light)" }} />
+                          <span><strong style={{ color: "white" }}>{cal.product}</strong> ({cal.month})</span>
+                        </div>
+                        <span style={{ 
+                          fontSize: "0.75rem", 
+                          padding: "3px 10px", 
+                          borderRadius: "20px", 
+                          fontWeight: "bold",
+                          backgroundColor: cal.status === "Harvesting" ? "var(--secondary-bg)" : "rgba(16, 185, 129, 0.1)",
+                          color: cal.status === "Harvesting" ? "var(--secondary)" : "var(--primary)",
+                          border: `1px solid ${cal.status === "Harvesting" ? "var(--secondary)" : "var(--primary)"}`
+                        }}>
+                          {cal.status}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -1257,7 +1510,7 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
                 <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setSelectedFarmer(null)}>Close</button>
                 <button 
                   className="btn btn-primary" 
-                  style={{ flex: 1 }} 
+                  style={{ flex: 1.5 }} 
                   onClick={() => {
                     onOpenChat(selectedFarmer.id);
                     setSelectedFarmer(null);
@@ -1298,15 +1551,26 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
 
                 <div>
                   <label style={{ fontSize: "0.85rem", fontWeight: "bold", color: "white" }}>Average Rating</label>
-                  <div style={{ display: "flex", gap: "8px", margin: "6px 0" }}>
+                  <div style={{ display: "flex", gap: "12px", margin: "8px 0" }}>
                     {[1, 2, 3, 4, 5].map(val => (
-                      <Star 
-                        key={val} 
-                        size={24} 
-                        onClick={() => setRating(val)}
-                        style={{ cursor: "pointer", color: val <= rating ? "var(--warning)" : "rgba(255,255,255,0.15)" }}
-                        fill={val <= rating ? "var(--warning)" : "none"}
-                      />
+                      <motion.div
+                        key={val}
+                        whileHover={{ scale: 1.25 }}
+                        whileTap={{ scale: 0.9 }}
+                        style={{ display: "inline-block" }}
+                      >
+                        <Star 
+                          size={28} 
+                          onClick={() => setRating(val)}
+                          style={{ 
+                            cursor: "pointer", 
+                            color: val <= rating ? "var(--warning)" : "rgba(255,255,255,0.15)",
+                            filter: val <= rating ? "drop-shadow(0 0 6px rgba(245, 158, 11, 0.5))" : "none",
+                            transition: "all 0.15s ease"
+                          }}
+                          fill={val <= rating ? "var(--warning)" : "none"}
+                        />
+                      </motion.div>
                     ))}
                   </div>
                 </div>
