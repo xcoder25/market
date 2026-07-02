@@ -10,7 +10,13 @@ const lgasData = [
   { name: "Abak", crop: "Palm Oil & Cassava", x: 110, y: 140, color: "#f59e0b" },
   { name: "Mkpat Enin", crop: "Coconut Refinery", x: 100, y: 210, color: "#10b981" },
   { name: "Eket", crop: "Marine Fisheries", x: 200, y: 230, color: "#0ea5e9" },
-  { name: "Oron", crop: "Coastal Crayfish", x: 290, y: 190, color: "#f59e0b" }
+  { name: "Oron", crop: "Coastal Crayfish", x: 290, y: 190, color: "#f59e0b" },
+  { name: "Ibeno", crop: "Ocean Seafood & Fish", x: 250, y: 250, color: "#0ea5e9" },
+  { name: "Oruk Anam", crop: "Cassava & Oil Palm", x: 60, y: 170, color: "#10b981" },
+  { name: "Essien Udim", crop: "Yam & Cocoyam", x: 70, y: 95, color: "#f59e0b" },
+  { name: "Uruan", crop: "Waterleaf & Pumpkin", x: 250, y: 120, color: "#10b981" },
+  { name: "Ibiono Ibom", crop: "Rice & Oil Palm", x: 160, y: 95, color: "#10b981" },
+  { name: "Ikot Abasi", crop: "Mangrove Seafood", x: 60, y: 230, color: "#0ea5e9" }
 ];
 
 export default function LgaMap3D({ db, selectedLga, onLgaSelect }) {

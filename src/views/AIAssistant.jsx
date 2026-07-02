@@ -17,11 +17,11 @@ export default function AIAssistant({ activeUser, onBuyProduct, onViewFarmer }) 
   const messagesEndRef = useRef(null);
 
   const suggestedPrompts = [
+    "Find bulk palm oil",
+    "Where can I buy fresh mfi?",
     "Find cassava near me",
     "Cheapest palm oil today",
-    "Show verified fish farmers",
-    "Compare garri prices across markets",
-    "Which farmer has tomatoes available this week?"
+    "Show verified fish farmers"
   ];
 
   useEffect(() => {

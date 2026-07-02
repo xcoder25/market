@@ -43,15 +43,15 @@ export default function FarmerDashboard({ activeUser, onSwitchView }) {
   const myProducts = db.products.filter(p => p.farmerId === activeUser.id);
   const myOrders = db.orders.filter(o => o.farmerId === activeUser.id);
   
-  // Wallet Balance (Released Escrow Funds)
+  // Wallet Balance (Released Escrow Funds: Subtotal minus discounts)
   const totalEarnings = myOrders
     .filter(o => ["Completed", "Reviewed"].includes(o.status))
-    .reduce((sum, o) => sum + o.totalAmount, 0);
+    .reduce((sum, o) => sum + (o.subtotal || o.totalAmount) - (o.discount || 0), 0);
 
-  // Escrow Balance (Locked in Active Orders)
+  // Escrow Balance (Locked in Active Orders: Subtotal minus discounts)
   const pendingEscrow = myOrders
     .filter(o => ["Paid", "Assigned", "Picked Up", "En Route", "Delivered"].includes(o.status))
-    .reduce((sum, o) => sum + o.totalAmount, 0);
+    .reduce((sum, o) => sum + (o.subtotal || o.totalAmount) - (o.discount || 0), 0);
   
   const activeOrdersCount = myOrders.filter(o => ["Requested", "Accepted", "Paid", "Assigned", "Picked Up", "En Route", "Delivered"].includes(o.status)).length;
 

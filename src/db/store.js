@@ -221,6 +221,50 @@ export const updateProduct = (productId, updatedData) => {
   return db;
 };
 
+export const calculateOrderBreakdown = (product, quantity, buyerLga) => {
+  const subtotal = product.price * quantity;
+  let discount = 0;
+  
+  if (product.isBulk || quantity >= 5) {
+    if (quantity >= 10 && quantity < 50) {
+      discount = subtotal * 0.05; // 5% bulk discount
+    } else if (quantity >= 50) {
+      discount = subtotal * 0.10; // 10% bulk discount
+    }
+  }
+
+  const discountedSubtotal = subtotal - discount;
+  const escrowFee = Math.round(discountedSubtotal * 0.03); // 3% platform escrow fee
+  
+  // Delivery Fee
+  const buyerLgaName = buyerLga || "Uyo";
+  const farmerLgaName = product.lga || "Uyo";
+  const isBulk = product.isBulk || quantity >= 5;
+  
+  let deliveryFee = 0;
+  let deliveryType = "";
+  
+  if (buyerLgaName.toLowerCase() === farmerLgaName.toLowerCase()) {
+    deliveryFee = isBulk ? 2500 : 1000;
+    deliveryType = isBulk ? "Local Bulk Cargo (Tricycle)" : "Local Retail (Motorcycle)";
+  } else {
+    deliveryFee = isBulk ? 12000 : 3500;
+    deliveryType = isBulk ? "Inter-LGA Haulage (Truck)" : "Inter-LGA Light Shipping";
+  }
+
+  const totalAmount = discountedSubtotal + escrowFee + deliveryFee;
+
+  return {
+    subtotal,
+    discount,
+    discountedSubtotal,
+    escrowFee,
+    deliveryFee,
+    deliveryType,
+    totalAmount
+  };
+};
+
 export const placeOrder = (productId, quantity, deliveryOption) => {
   const db = getDB();
   const product = db.products.find(p => p.id === productId);
@@ -229,27 +273,32 @@ export const placeOrder = (productId, quantity, deliveryOption) => {
   const farmer = db.users.find(u => u.id === product.farmerId);
   const buyer = db.currentUser;
   
-  const total = product.price * quantity;
+  const breakdown = calculateOrderBreakdown(product, quantity, buyer?.lga);
   const orderId = "ord-" + Math.floor(10000 + Math.random() * 90000);
   
   const newOrder = {
     id: orderId,
-    buyerId: buyer.id,
-    buyerName: buyer.name,
-    buyerPhone: buyer.phone,
+    buyerId: buyer?.id || "guest",
+    buyerName: buyer?.name || "Guest Buyer",
+    buyerPhone: buyer?.phone || "08000000000",
     farmerId: product.farmerId,
     farmerName: farmer.name,
     productId: product.id,
     productName: product.name,
     quantity,
     price: product.price,
-    totalAmount: total,
+    subtotal: breakdown.subtotal,
+    discount: breakdown.discount,
+    escrowFee: breakdown.escrowFee,
+    deliveryFee: breakdown.deliveryFee,
+    deliveryType: breakdown.deliveryType,
+    totalAmount: breakdown.totalAmount,
     status: "Requested",
     date: new Date().toISOString().split("T")[0],
     deliveryPartnerId: null,
     deliveryStatus: "Not Started",
     paymentReceipt: null,
-    deliveryOption
+    deliveryOption: deliveryOption || breakdown.deliveryType
   };
 
   db.orders.unshift(newOrder);
@@ -260,8 +309,8 @@ export const placeOrder = (productId, quantity, deliveryOption) => {
     product.status = "Out of Stock";
   }
 
-  addNotification(db, product.farmerId, "New Order Received", `${buyer.name} ordered ${quantity} ${product.unit}(s) of ${product.name}.`);
-  addAuditLog(db, "Order Created", `Buyer ${buyer.name} placed order ${orderId} for ${product.name}`);
+  addNotification(db, product.farmerId, "New Order Received", `${buyer?.name || "Guest"} ordered ${quantity} ${product.unit}(s) of ${product.name}.`);
+  addAuditLog(db, "Order Created", `Buyer ${buyer?.name || "Guest"} placed order ${orderId} for ${product.name}`);
   saveDB(db);
   return { db, orderId };
 };
@@ -475,15 +524,46 @@ export const updateMarketPrice = (priceId, marketName, newPrice) => {
   return db;
 };
 
-// Local AI Engine (Rule & Regex Based Search)
+// Local AI Engine (Rule & Regex Based Search with Local Synonyms)
 export const queryAI = (queryText) => {
   const db = getDB();
-  const text = queryText.toLowerCase().trim();
+  let text = queryText.toLowerCase().trim();
   
-  // 1. "Find cassava near me" or "Cassava near Uyo"
+  // Local translations mapping
+  if (text.includes("mfi")) {
+    text = text.replace("mfi", "periwinkle");
+  }
+  if (text.includes("obo")) {
+    text = text.replace("obo", "crayfish");
+  }
+  if (text.includes("afere mmong") || text.includes("nnise")) {
+    text = text.replace("afere mmong", "waterleaf").replace("nnise", "waterleaf");
+  }
+
+  // 1. Bulk / Wholesale Search
+  if (text.includes("bulk") || text.includes("wholesale") || text.includes("jerrycan") || text.includes("drum")) {
+    let results = db.products.filter(p => p.isBulk && p.status === "Available");
+    
+    if (text.includes("palm oil")) {
+      results = results.filter(p => p.name.toLowerCase().includes("palm oil"));
+      return {
+        type: "products",
+        message: "I found wholesale bulk **Palm Oil** listings. Perfect for distributors, processors, and restaurants with platform escrow and bulk haulage transport:",
+        items: results
+      };
+    }
+
+    return {
+      type: "products",
+      message: "Here are the wholesale bulk commodities currently listed on the platform:",
+      items: results
+    };
+  }
+  
+  // 2. "Find cassava near me" or "Cassava near Uyo"
   if (text.includes("cassava") && (text.includes("near") || text.includes("in") || text.includes("around"))) {
     // Determine location if mentioned, or default to current user location
-    let targetLga = db.currentUser.lga || "Uyo";
+    let targetLga = db.currentUser?.lga || "Uyo";
     const mentionedLga = AKWA_IBOM_LOCATIONS.find(loc => text.includes(loc.lga.toLowerCase()));
     if (mentionedLga) targetLga = mentionedLga.lga;
 
@@ -501,7 +581,7 @@ export const queryAI = (queryText) => {
     };
   }
   
-  // 2. "Cheapest palm oil today" or "Cheapest palm oil"
+  // 3. "Cheapest palm oil today" or "Cheapest palm oil"
   if (text.includes("palm oil") && (text.includes("cheapest") || text.includes("lowest price") || text.includes("cheap"))) {
     const results = db.products
       .filter(p => p.name.toLowerCase().includes("palm oil") && p.status === "Available")
@@ -514,7 +594,7 @@ export const queryAI = (queryText) => {
     };
   }
 
-  // 3. "Show verified fish farmers" or "verified fish"
+  // 4. "Show verified fish farmers" or "verified fish"
   if (text.includes("fish") && text.includes("verified")) {
     const verifiedFarmers = db.users.filter(u => 
       u.role === "Farmer" && 
@@ -524,12 +604,12 @@ export const queryAI = (queryText) => {
     
     return {
       type: "farmers",
-      message: "Here are verified fish farmers (Silver/Gold verification) across Akwa Ibom:",
+      message: "Here are verified fish/seafood farmers (Silver/Gold verification) across Akwa Ibom:",
       items: verifiedFarmers
     };
   }
 
-  // 4. "Which farmer has tomatoes available this week?" or "tomatoes"
+  // 5. "Which farmer has tomatoes available this week?" or "tomatoes"
   if (text.includes("tomatoes") || text.includes("tomato")) {
     const results = db.products.filter(p => 
       p.name.toLowerCase().includes("tomato") && 
@@ -543,7 +623,20 @@ export const queryAI = (queryText) => {
     };
   }
 
-  // 5. "Compare garri prices across markets" or "compare garri"
+  // 6. Periwinkles (Mfi) query
+  if (text.includes("periwinkle") || text.includes("mfi")) {
+    const results = db.products.filter(p => 
+      (p.name.toLowerCase().includes("periwinkle") || p.description.toLowerCase().includes("periwinkle") || p.name.toLowerCase().includes("mfi")) &&
+      p.status === "Available"
+    );
+    return {
+      type: "products",
+      message: "Here are listings for fresh river periwinkles (Mfi) harvested along coastal waters:",
+      items: results
+    };
+  }
+
+  // 7. "Compare garri prices across markets" or "compare garri"
   if (text.includes("garri") && (text.includes("compare") || text.includes("price") || text.includes("markets"))) {
     const garriPrices = db.marketPrices.find(mp => mp.product.toLowerCase().includes("garri"));
     if (garriPrices) {
@@ -581,7 +674,7 @@ export const queryAI = (queryText) => {
 
   return {
     type: "text",
-    message: "I couldn't find specific products matching that request. You can try asking:\n- *'Find cassava near me'*\n- *'Cheapest palm oil today'*\n- *'Show verified fish farmers'*\n- *'Compare garri prices'*",
+    message: "I couldn't find specific products matching that request. You can try asking:\n- *'Show bulk palm oil'* (wholesale jerrycans/drums)\n- *'Find cassava near me'*\n- *'Show verified fish farmers'*\n- *'Where can I buy fresh mfi?'* (periwinkles)",
     items: []
   };
 };

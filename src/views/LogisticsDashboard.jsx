@@ -30,9 +30,12 @@ export default function LogisticsDashboard({ activeUser }) {
   const activeJobs = myJobs.filter(o => ["Picked Up", "En Route", "Delivered"].includes(o.status) && o.deliveryStatus !== "Delivered");
   const completedJobs = myJobs.filter(o => o.deliveryStatus === "Delivered");
 
-  // Calculate earnings (simulate N2,500 delivery fee per completed trip)
-  const deliveryFeePerTrip = 2500;
-  const myEarnings = completedJobs.length * deliveryFeePerTrip;
+  // Calculate earnings based on actual job delivery fees minus 5% platform administration commission
+  const myEarnings = completedJobs.reduce((sum, o) => {
+    const fee = o.deliveryFee || 2500;
+    const platformCut = Math.round(fee * 0.05);
+    return sum + (fee - platformCut);
+  }, 0);
 
   const handleClaimJob = (orderId) => {
     setActionLoading(true);
@@ -204,46 +207,69 @@ export default function LogisticsDashboard({ activeUser }) {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                {availableJobs.map(job => (
-                  <div key={job.id} className="dashboard-order-card pending">
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--glass-border)", paddingBottom: "10px", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
-                      <div>
-                        <strong style={{ color: "white" }}>Order Request: {job.id}</strong>
-                        <span style={{ fontSize: "0.85rem", color: "var(--gray-600)", marginLeft: "12px" }}>Value: ₦{job.totalAmount.toLocaleString()}</span>
-                      </div>
-                      <span style={{ fontSize: "0.95rem", color: "var(--secondary-light)", fontWeight: "bold" }}>Est. Pay: ₦2,500</span>
-                    </div>
+                {availableJobs.map(job => {
+                  const estPay = Math.round((job.deliveryFee || 2500) * 0.95);
+                  const isBulkCargo = (job.deliveryFee || 2500) >= 2500;
+                  const shippingClass = (job.deliveryFee || 2500) >= 12000 
+                    ? "Bulk Haulage (Truck)" 
+                    : (job.deliveryFee || 2500) >= 3500 
+                      ? "Inter-LGA Cargo Shipping"
+                      : (job.deliveryFee || 2500) >= 2500 
+                        ? "Local Bulk Cargo (Tricycle)"
+                        : "Local Express Delivery (Bike)";
 
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "24px", marginBottom: "16px" }}>
-                      <div style={{ display: "flex", gap: "10px" }}>
-                        <MapPin size={20} style={{ color: "var(--primary)", flexShrink: 0 }} />
+                  return (
+                    <div key={job.id} className="dashboard-order-card pending">
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--glass-border)", paddingBottom: "10px", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
                         <div>
-                          <small style={{ color: "var(--gray-600)", display: "block" }}>PICKUP FROM (FARMER)</small>
-                          <strong style={{ color: "white" }}>{job.farmerName}</strong>
-                          <div style={{ fontSize: "0.85rem", color: "var(--gray-800)" }}>{getFarmerLocation(job.farmerId)}</div>
+                          <strong style={{ color: "white" }}>Order Request: {job.id}</strong>
+                          <span style={{ fontSize: "0.85rem", color: "var(--gray-600)", marginLeft: "12px" }}>Value: ₦{job.totalAmount.toLocaleString()}</span>
+                          <span style={{ 
+                            fontSize: "0.75rem", 
+                            background: isBulkCargo ? "rgba(245, 158, 11, 0.12)" : "rgba(16, 185, 129, 0.12)", 
+                            color: isBulkCargo ? "var(--secondary-light)" : "var(--primary-light)", 
+                            padding: "2px 8px", 
+                            borderRadius: "12px", 
+                            marginLeft: "12px",
+                            fontWeight: "bold"
+                          }}>
+                            {shippingClass}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: "0.95rem", color: "var(--secondary-light)", fontWeight: "bold" }}>Est. Pay: ₦{estPay.toLocaleString()}</span>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "24px", marginBottom: "16px" }}>
+                        <div style={{ display: "flex", gap: "10px" }}>
+                          <MapPin size={20} style={{ color: "var(--primary)", flexShrink: 0 }} />
+                          <div>
+                            <small style={{ color: "var(--gray-600)", display: "block" }}>PICKUP FROM (FARMER)</small>
+                            <strong style={{ color: "white" }}>{job.farmerName}</strong>
+                            <div style={{ fontSize: "0.85rem", color: "var(--gray-800)" }}>{getFarmerLocation(job.farmerId)}</div>
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: "10px" }}>
+                          <Navigation size={20} style={{ color: "var(--secondary)", flexShrink: 0 }} />
+                          <div>
+                            <small style={{ color: "var(--gray-600)", display: "block" }}>DELIVER TO (BUYER)</small>
+                            <strong style={{ color: "white" }}>{job.buyerName}</strong>
+                            <div style={{ fontSize: "0.85rem", color: "var(--gray-800)" }}>{getBuyerLocation(job.buyerId)}</div>
+                          </div>
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: "10px" }}>
-                        <Navigation size={20} style={{ color: "var(--secondary)", flexShrink: 0 }} />
-                        <div>
-                          <small style={{ color: "var(--gray-600)", display: "block" }}>DELIVER TO (BUYER)</small>
-                          <strong style={{ color: "white" }}>{job.buyerName}</strong>
-                          <div style={{ fontSize: "0.85rem", color: "var(--gray-800)" }}>{getBuyerLocation(job.buyerId)}</div>
-                        </div>
-                      </div>
-                    </div>
 
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--glass-border)", padding: "10px 16px", borderRadius: "8px", flexWrap: "wrap", gap: "10px" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                        <Package size={16} style={{ color: "var(--primary)" }} />
-                        <span style={{ fontSize: "0.85rem" }}>Produce: <strong>{job.quantity} {job.productName}</strong></span>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(255, 255, 255, 0.02)", border: "1px solid var(--glass-border)", padding: "10px 16px", borderRadius: "8px", flexWrap: "wrap", gap: "10px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <Package size={16} style={{ color: "var(--primary)" }} />
+                          <span style={{ fontSize: "0.85rem" }}>Produce: <strong>{job.quantity} {job.productName}</strong></span>
+                        </div>
+                        <button className="btn btn-primary btn-sm" onClick={() => handleClaimJob(job.id)}>
+                          Accept & Claim Delivery
+                        </button>
                       </div>
-                      <button className="btn btn-primary btn-sm" onClick={() => handleClaimJob(job.id)}>
-                        Accept & Claim Delivery
-                      </button>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </motion.div>

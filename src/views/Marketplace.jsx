@@ -441,6 +441,7 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
           <div className="marketplace-nav-tabs">
             {[
               { id: "listings", label: "Browse Produce", icon: <ShoppingBag size={16} /> },
+              { id: "bulk", label: "Bulk & Palm Oil Trade", icon: <Droplets size={16} /> },
               { id: "farmers", label: "Farmers Directory", icon: <ShieldCheck size={16} /> },
               { id: "harvest_calendar", label: "Harvest Calendar", icon: <Calendar size={16} /> },
               ...(activeUser ? [{ id: "my_orders", label: `My Orders (${myPendingOrders.length})`, icon: <FileText size={16} /> }] : [])
@@ -524,7 +525,81 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
             </div>
           ))}
         </div>
-      )}      {activeTab === "listings" && (
+      )}
+      {activeTab === "bulk" && (
+        <div style={{ width: "100%" }}>
+          {/* Bulk Hero Banner */}
+          <div 
+            style={{ 
+              background: "linear-gradient(135deg, rgba(88, 28, 135, 0.2) 0%, rgba(124, 58, 237, 0.45) 100%)", 
+              border: "1px solid var(--glass-border)", 
+              borderRadius: "16px", 
+              padding: "24px 32px", 
+              marginBottom: "28px", 
+              position: "relative", 
+              overflow: "hidden"
+            }}
+          >
+            <div style={{ position: "absolute", right: "-20px", bottom: "-20px", width: "150px", height: "150px", background: "var(--secondary)", filter: "blur(60px)", opacity: 0.25, pointerEvents: "none" }} />
+            <span style={{ color: "var(--secondary-light)", fontSize: "0.8rem", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6px", display: "block" }}>Wholesale B2B Trading Hub</span>
+            <h3 style={{ fontSize: "1.8rem", color: "white", fontWeight: "900", marginBottom: "8px", fontFamily: "var(--font-display)", margin: 0 }}>
+              Akwa Ibom Palm Oil & Bulk Commodities Hub
+            </h3>
+            <p style={{ color: "rgba(255,255,255,0.75)", fontSize: "0.95rem", maxWidth: "650px", lineHeight: 1.4, margin: "6px 0 0 0" }}>
+              Direct mill bookings from Abak, Eket, and Mkpat Enin. Secured by 3% Escrow Commission with fixed inter-LGA Bulk Haulage Carrier matching. Save 5% on 10+ Jerrycans, 10% on 50+.
+            </p>
+          </div>
+
+          {/* Bulk Listings Grid */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <h4 style={{ fontSize: "1.2rem", color: "white", margin: 0 }}>Wholesale Commodities</h4>
+            <span style={{ fontSize: "0.85rem", color: "var(--gray-600)" }}>Verified cooperative mills & processing yards</span>
+          </div>
+
+          <div className="product-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
+            {db.products.filter(p => p.isBulk && p.status === "Available").map(product => {
+              const farmer = getFarmerDetails(product.farmerId);
+              return (
+                <div key={product.id} className="product-card" style={{ display: "flex", flexDirection: "column" }}>
+                  <div className="product-img-wrapper" style={{ height: "160px" }}>
+                    <img src={product.image} alt={product.name} className="product-img" />
+                    <span className="product-card-badge fresh" style={{ background: "var(--secondary)", color: "black", fontWeight: "bold" }}>Wholesale Bulk</span>
+                  </div>
+                  <div style={{ padding: "16px", display: "flex", flexDirection: "column", flex: 1 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span className="product-cat">{product.category}</span>
+                      <span style={{ fontSize: "0.75rem", background: "rgba(16,185,129,0.1)", color: "var(--primary-light)", padding: "2px 6px", borderRadius: "8px" }}>📍 {product.lga}</span>
+                    </div>
+                    <h4 style={{ fontSize: "1.1rem", color: "white", margin: "6px 0 4px 0", fontWeight: "bold" }}>{product.name}</h4>
+                    <p style={{ fontSize: "0.8rem", color: "var(--gray-600)", lineHeight: 1.3, flex: 1 }}>{product.description}</p>
+                    
+                    <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "10px", marginTop: "10px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div>
+                          <span style={{ fontSize: "0.7rem", color: "var(--gray-600)", display: "block" }}>Price / Unit</span>
+                          <strong style={{ fontSize: "1.15rem", color: "var(--secondary-light)" }}>₦{product.price.toLocaleString()}</strong>
+                          <span style={{ fontSize: "0.75rem", color: "var(--gray-600)" }}> / {product.unit}</span>
+                        </div>
+                        <button 
+                          className="btn btn-primary btn-sm"
+                          style={{ padding: "8px 14px", fontSize: "0.8rem" }}
+                          onClick={() => {
+                            setSelectedProduct(product);
+                            setOrderQty(product.minOrder || 1);
+                          }}
+                        >
+                          Book Bulk Order
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {activeTab === "listings" && (
         <div style={{ width: "100%" }}>
           {/* Hero Carousel Banner */}
           <div 
@@ -1354,12 +1429,68 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.3rem", fontWeight: "bold", borderTop: "1px solid var(--glass-border)", paddingTop: "16px", marginBottom: "20px" }}>
-                <span>Total Price:</span>
-                <span style={{ color: "var(--secondary)" }}>₦{(selectedProduct.price * orderQty).toLocaleString()}</span>
-              </div>
+              {/* Dynamic Escrow & Delivery Fee Calculator */}
+              {(() => {
+                const prodLga = selectedProduct.lga || "Uyo";
+                const buyerLga = activeUser?.lga || "Uyo";
+                const sub = selectedProduct.price * orderQty;
+                
+                let disc = 0;
+                if (selectedProduct.isBulk || orderQty >= 5) {
+                  if (orderQty >= 10 && orderQty < 50) {
+                    disc = sub * 0.05;
+                  } else if (orderQty >= 50) {
+                    disc = sub * 0.10;
+                  }
+                }
+                const discSub = sub - disc;
+                const escFee = Math.round(discSub * 0.03);
+                
+                const isBlk = selectedProduct.isBulk || orderQty >= 5;
+                let delFee = 0;
+                let delType = "";
+                if (buyerLga.toLowerCase() === prodLga.toLowerCase()) {
+                  delFee = isBlk ? 2500 : 1000;
+                  delType = isBlk ? "Local Bulk Cargo (Tricycle)" : "Local Retail (Motorcycle)";
+                } else {
+                  delFee = isBlk ? 12000 : 3500;
+                  delType = isBlk ? "Inter-LGA Haulage (Truck)" : "Inter-LGA Light Shipping";
+                }
+                const totAmt = discSub + escFee + delFee;
 
-              <div style={{ display: "flex", gap: "12px" }}>
+                return (
+                  <div style={{ borderTop: "1px solid var(--glass-border)", paddingTop: "14px", marginTop: "14px", fontSize: "0.85rem", color: "var(--gray-800)", display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>Subtotal:</span>
+                      <span style={{ color: "white" }}>₦{sub.toLocaleString()}</span>
+                    </div>
+                    {disc > 0 && (
+                      <div style={{ display: "flex", justifyContent: "space-between", color: "var(--secondary-light)" }}>
+                        <span>Volume Discount:</span>
+                        <span>-₦{disc.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span>Escrow Platform Fee (3%):</span>
+                      <span style={{ color: "white" }}>₦{escFee.toLocaleString()}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ display: "flex", flexDirection: "column" }}>
+                        <span>Delivery & Shipping:</span>
+                        <span style={{ fontSize: "0.7rem", color: "var(--gray-600)" }}>{delType} (From {prodLga} to {buyerLga})</span>
+                      </span>
+                      <span style={{ color: "white" }}>₦{delFee.toLocaleString()}</span>
+                    </div>
+                    
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "1.3rem", fontWeight: "bold", borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "12px", marginTop: "6px", color: "white" }}>
+                      <span>Total Amount:</span>
+                      <span style={{ color: "var(--secondary)" }}>₦{totAmt.toLocaleString()}</span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div style={{ display: "flex", gap: "12px", marginTop: "20px" }}>
                 <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setSelectedProduct(null)}>Cancel</button>
                 <button 
                   className="btn btn-primary" 
@@ -1460,6 +1591,28 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat }) {
                       <span>Farmer:</span>
                       <span style={{ color: "white" }}>{currentInvoice.farmerName}</span>
                     </div>
+                    
+                    <div style={{ borderTop: "1px solid rgba(255,255,255,0.05)", margin: "8px 0", paddingTop: "8px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.80rem", color: "var(--gray-600)" }}>
+                        <span>Subtotal:</span>
+                        <span>₦{(currentInvoice.subtotal || (currentInvoice.price * currentInvoice.quantity)).toLocaleString()}</span>
+                      </div>
+                      {currentInvoice.discount > 0 && (
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.80rem", color: "var(--secondary-light)" }}>
+                          <span>Volume Discount:</span>
+                          <span>-₦{currentInvoice.discount.toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.80rem", color: "var(--gray-600)" }}>
+                        <span>Escrow Fee (3%):</span>
+                        <span>₦{(currentInvoice.escrowFee || 0).toLocaleString()}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px", fontSize: "0.80rem", color: "var(--gray-600)" }}>
+                        <span>Delivery Fee ({currentInvoice.deliveryType || "Standard"}):</span>
+                        <span>₦{(currentInvoice.deliveryFee || 0).toLocaleString()}</span>
+                      </div>
+                    </div>
+
                     <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px dashed var(--glass-border)", paddingTop: "8px", marginTop: "8px", fontWeight: "bold", fontSize: "1.1rem", color: "var(--secondary-light)" }}>
                       <span>Amount Due:</span>
                       <span>₦{currentInvoice.totalAmount.toLocaleString()}</span>

@@ -15,7 +15,13 @@ export default function Landing({ onExplore, onAuthClick, db }) {
     { name: "Abak", crop: "Palm Oil & Cassava", details: "Extensive palm estates and automated mills supplying heavy consumer markets.", x: 110, y: 140, color: "#f59e0b" },
     { name: "Mkpat Enin", crop: "Coconut Refinery", details: "Home to the St. Gabriel Coconut Plantation supplying organic coconut meat and oil.", x: 100, y: 210, color: "#10b981" },
     { name: "Eket", crop: "Marine Fisheries", details: "Coastal city processing fresh sea food, ocean prawns, and cocoa farms.", x: 200, y: 230, color: "#0ea5e9" },
-    { name: "Oron", crop: "Coastal Crayfish", details: "Akwa Ibom's marine gateway supplying dried crayfish, ocean shrimps, and periwinkles.", x: 290, y: 190, color: "#f59e0b" }
+    { name: "Oron", crop: "Coastal Crayfish", details: "Akwa Ibom's marine gateway supplying dried crayfish, ocean shrimps, and periwinkles.", x: 290, y: 190, color: "#f59e0b" },
+    { name: "Ibeno", crop: "Ocean Seafood & Fish", details: "Coastal sands with major artisanal fishing terminals supplying sea crayfish and oysters.", x: 250, y: 250, color: "#0ea5e9" },
+    { name: "Oruk Anam", crop: "Cassava & Oil Palm", details: "Extensive family farm holdings producing bulk cassava stems and palm fruits.", x: 60, y: 170, color: "#10b981" },
+    { name: "Essien Udim", crop: "Yam & Cocoyam", details: "Major roots and tubers supplier, producing high-grade yams and seed cocoyams.", x: 70, y: 95, color: "#f59e0b" },
+    { name: "Uruan", crop: "Waterleaf & Pumpkin", details: "Riverine agricultural zone providing fresh leafy vegetables and local river clams.", x: 250, y: 120, color: "#10b981" },
+    { name: "Ibiono Ibom", crop: "Rice & Oil Palm", details: "Lush hilly terrain famous for rice fields, cocoa groves, and palm plantations.", x: 160, y: 95, color: "#10b981" },
+    { name: "Ikot Abasi", crop: "Mangrove Seafood", details: "Coastal port area known for crabs, dried crayfish, and palm plantations.", x: 60, y: 230, color: "#0ea5e9" }
   ];
 
   const localProduce = [
