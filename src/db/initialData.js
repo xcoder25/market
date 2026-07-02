@@ -1,0 +1,469 @@
+// Initial mock database for Ibom Agro Market (Akwa Ibom State)
+
+export const AKWA_IBOM_LOCATIONS = [
+  { lga: "Uyo", towns: ["Itam", "Akpan Andem", "Uyo Town", "Ikot Oku Ikono", "Mbiabong"] },
+  { lga: "Eket", towns: ["Eket Town", "Afaha Atai", "Okon", "Idua", "Esit Urua"] },
+  { lga: "Ikot Ekpene", towns: ["Ikot Ekpene Town", "Abiakpo", "Adiasim", "Ikot Obong Edong"] },
+  { lga: "Oron", towns: ["Oron Town", "Esuk Oro", "Ekeya", "Iquita"] },
+  { lga: "Abak", towns: ["Abak Town", "Ikot Ekang", "Midim", "Afaha Obong"] },
+  { lga: "Etinan", towns: ["Etinan Town", "Mbioto", "Ikuse", "Afaha Nsit"] },
+  { lga: "Mkpat Enin", towns: ["Mkpat Enin Town", "Ikot Abasi Town", "Ibekwe"] },
+  { lga: "Itu", towns: ["Itu Town", "Mbiatok", "Ayadehe"] }
+];
+
+export const CATEGORIES = {
+  Crops: ["Cassava", "Yam", "Rice", "Maize", "Beans", "Tomatoes", "Pepper", "Onion", "Vegetables", "Plantain", "Banana"],
+  Fish: ["Catfish", "Tilapia", "Croaker", "Smoked Fish"],
+  Poultry: ["Broilers", "Layers", "Eggs", "Turkey"],
+  Livestock: ["Goat", "Pig", "Cow", "Sheep"],
+  "Palm Products": ["Palm Oil", "Palm Kernel", "Palm Fruit"],
+  "Processed Products": ["Garri", "Fufu", "Starch", "Flour"],
+  Fruits: ["Pineapple", "Mango", "Orange", "Coconut"]
+};
+
+export const INITIAL_USERS = [
+  // Farmers
+  {
+    id: "f1",
+    name: "Etim Okon",
+    phone: "08031234567",
+    email: "etim.okon@agro.ng",
+    role: "Farmer",
+    state: "Akwa Ibom",
+    lga: "Uyo",
+    town: "Itam",
+    address: "No. 4 Market Road, Itam",
+    farmName: "Etim Gold Agri-Ventures",
+    bio: "Passionate farmer specializing in organic yellow cassava, high-yield white garri, and pure red palm oil. Over 12 years of supplying Uyo markets.",
+    yearsFarming: 12,
+    farmType: "Crops & Processing",
+    verification: "Gold", // Bronze, Silver, Gold
+    followers: 85,
+    avatar: "https://images.unsplash.com/photo-1544717297-fa95b6ee9643?w=150",
+    banner: "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?w=800",
+    harvestCalendar: [
+      { id: "h1", product: "Yellow Cassava", month: "July", status: "Harvesting", description: "Fresh farm gates cassava ready for bulk purchase." },
+      { id: "h2", product: "Palm Oil", month: "August", status: "Pre-order", description: "August first-press palm oil. Booking open." }
+    ],
+    rating: 4.8,
+    reviewsCount: 24
+  },
+  {
+    id: "f2",
+    name: "Aniefiok Udofia",
+    phone: "08051234567",
+    email: "aniefiok.fish@gmail.com",
+    role: "Farmer",
+    state: "Akwa Ibom",
+    lga: "Uyo",
+    town: "Akpan Andem",
+    address: "15 Brooks Street, Uyo",
+    farmName: "Uyo Aquaculture Hub",
+    bio: "We breed premium African Catfish and Tilapia. Healthy, organically fed, and harvested at table size.",
+    yearsFarming: 6,
+    farmType: "Fish Farming",
+    verification: "Silver",
+    followers: 120,
+    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
+    banner: "https://images.unsplash.com/photo-1534620808146-d33bb39128b2?w=800",
+    harvestCalendar: [
+      { id: "h3", product: "Catfish (Fresh)", month: "July", status: "Available", description: "Harvesting 2-ton batches every weekend." }
+    ],
+    rating: 4.9,
+    reviewsCount: 42
+  },
+  {
+    id: "f3",
+    name: "Imaobong Effiong",
+    phone: "08091234567",
+    email: "ima.effiong@eketpalm.com",
+    role: "Farmer",
+    state: "Akwa Ibom",
+    lga: "Eket",
+    town: "Eket Town",
+    address: "3 Marina Road, Eket",
+    farmName: "Eket Palm Oil Millers",
+    bio: "Premium grade palm oil directly from our local mill in Eket. Acid value tested, zero additives, rich natural taste.",
+    yearsFarming: 15,
+    farmType: "Palm Processing",
+    verification: "Gold",
+    followers: 210,
+    avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150",
+    banner: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=800",
+    harvestCalendar: [
+      { id: "h4", product: "Palm Oil (Red)", month: "July", status: "Harvesting", description: "Daily milling. Active production ongoing." }
+    ],
+    rating: 5.0,
+    reviewsCount: 68
+  },
+  {
+    id: "f4",
+    name: "Nse Ekpo",
+    phone: "08121234567",
+    email: "nse.poultry@abak.ng",
+    role: "Farmer",
+    state: "Akwa Ibom",
+    lga: "Abak",
+    town: "Abak Town",
+    address: "10 Abak-Uyo Highway",
+    farmName: "Abak Poultry & Egg Hub",
+    bio: "Farm-fresh chicken eggs, broilers, and layers at competitive wholesale rates. Order fresh, collect same day.",
+    yearsFarming: 4,
+    farmType: "Poultry",
+    verification: "Bronze",
+    followers: 42,
+    avatar: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150",
+    banner: "https://images.unsplash.com/photo-1516253593875-bd7ba052fbc5?w=800",
+    harvestCalendar: [
+      { id: "h5", product: "Layers & Eggs", month: "July", status: "Available", description: "300 crates of eggs available daily." }
+    ],
+    rating: 4.5,
+    reviewsCount: 12
+  },
+
+  // Buyers
+  {
+    id: "b1",
+    name: "Chef Bassey",
+    phone: "07039876543",
+    email: "bassey.kitchen@cook.ng",
+    role: "Buyer",
+    state: "Akwa Ibom",
+    lga: "Uyo",
+    town: "Itam",
+    address: "42 Oron Road, Uyo",
+    avatar: "https://images.unsplash.com/photo-1583394838336-acd977736f90?w=150"
+  },
+  {
+    id: "b2",
+    name: "Edidiong Hotel & Suites",
+    phone: "07059876543",
+    email: "procurement@edidionghotel.com",
+    role: "Buyer",
+    state: "Akwa Ibom",
+    lga: "Eket",
+    town: "Eket Town",
+    address: "100 Grace Bill Road, Eket",
+    avatar: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=150"
+  },
+
+  // Logistics Partners
+  {
+    id: "l1",
+    name: "Ibom Express Logistics",
+    phone: "09019876543",
+    email: "deliveries@ibomexpress.com",
+    role: "Logistics Partner",
+    state: "Akwa Ibom",
+    lga: "Uyo",
+    town: "Uyo Town",
+    address: "55 Ikot Ekpene Road, Uyo",
+    avatar: "https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=150",
+    vehicleType: "Motorcycle / Tricycle (Keke)",
+    rating: 4.8,
+    reviewsCount: 154,
+    status: "Available"
+  },
+  {
+    id: "l2",
+    name: "Akwa Agro Haulage",
+    phone: "09029876543",
+    email: "haulage@akwaagro.com",
+    role: "Logistics Partner",
+    state: "Akwa Ibom",
+    lga: "Ikot Ekpene",
+    town: "Ikot Ekpene Town",
+    address: "12 Aba Road, Ikot Ekpene",
+    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
+    vehicleType: "Light Truck / Pickup Van",
+    rating: 4.6,
+    reviewsCount: 88,
+    status: "Available"
+  },
+
+  // Admins
+  {
+    id: "admin1",
+    name: "Mfon Udo",
+    phone: "08000000000",
+    email: "admin@ibommarket.com",
+    role: "Admin",
+    state: "Akwa Ibom",
+    lga: "Uyo",
+    town: "Uyo Town",
+    address: "State Secretariat Complex, Uyo",
+    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150"
+  }
+];
+
+export const INITIAL_PRODUCTS = [
+  {
+    id: "p1",
+    farmerId: "f1",
+    name: "White Garri (Premium quality)",
+    category: "Processed Products",
+    subcategory: "Garri",
+    description: "Dry, well-sieved, and crispy white garri processed from freshly harvested cassava. No chemicals, pure local processing. Excellent for drinking or Eba.",
+    price: 2600,
+    unit: "Basin",
+    quantity: 50,
+    minOrder: 2,
+    harvestDate: "2026-06-25",
+    organic: true,
+    deliveryAvailable: true,
+    location: "Itam",
+    lga: "Uyo",
+    town: "Itam",
+    status: "Available",
+    image: "https://images.unsplash.com/photo-1626132647523-66f5bf380027?w=500"
+  },
+  {
+    id: "p2",
+    farmerId: "f1",
+    name: "Fresh Yellow Cassava Tubers",
+    category: "Crops",
+    subcategory: "Cassava",
+    description: "Rich in Vitamin A, harvested on the day of delivery. Recommended for processing yellow garri, starch, or fufu.",
+    price: 11000,
+    unit: "Bag (100kg)",
+    quantity: 15,
+    minOrder: 1,
+    harvestDate: "2026-06-29",
+    organic: true,
+    deliveryAvailable: false,
+    location: "Itam",
+    lga: "Uyo",
+    town: "Itam",
+    status: "Available",
+    image: "https://images.unsplash.com/photo-1590005354167-6da97870c913?w=500"
+  },
+  {
+    id: "p3",
+    farmerId: "f2",
+    name: "Live African Catfish (Table Size)",
+    category: "Fish",
+    subcategory: "Catfish",
+    description: "Averaging 1.2kg to 1.5kg per fish. Healthy and active. Cultured in clean concrete ponds using premium feeds. Perfect for restaurants and pepper soup joints.",
+    price: 3400,
+    unit: "Kg",
+    quantity: 800,
+    minOrder: 5,
+    harvestDate: "2026-06-30",
+    organic: false,
+    deliveryAvailable: true,
+    location: "Akpan Andem",
+    lga: "Uyo",
+    town: "Akpan Andem",
+    status: "Available",
+    image: "https://images.unsplash.com/photo-1534124412554-72583ec7cd30?w=500"
+  },
+  {
+    id: "p4",
+    farmerId: "f3",
+    name: "Pure Red Palm Oil (5 Liters)",
+    category: "Palm Products",
+    subcategory: "Palm Oil",
+    description: "Extracted from premium Tenera palm fruits. Sweet aroma, low FFA, no artificial coloring or sediment. Excellent for domestic cooking and industrial processors.",
+    price: 6500,
+    unit: "Gallon (5L)",
+    quantity: 200,
+    minOrder: 1,
+    harvestDate: "2026-06-28",
+    organic: true,
+    deliveryAvailable: true,
+    location: "Eket Town",
+    lga: "Eket",
+    town: "Eket Town",
+    status: "Available",
+    image: "https://images.unsplash.com/photo-1612450796384-e1d113c2306d?w=500"
+  },
+  {
+    id: "p5",
+    farmerId: "f4",
+    name: "Fresh Jumbo Eggs",
+    category: "Poultry",
+    subcategory: "Eggs",
+    description: "Large size chicken eggs, clean shells, double-yolk potential. Freshly packed in crates. Stored in climate-controlled rooms.",
+    price: 4200,
+    unit: "Crate (30 eggs)",
+    quantity: 120,
+    minOrder: 5,
+    harvestDate: "2026-06-30",
+    organic: false,
+    deliveryAvailable: true,
+    location: "Abak Town",
+    lga: "Abak",
+    town: "Abak Town",
+    status: "Available",
+    image: "https://images.unsplash.com/photo-1506976785307-8732e854ad03?w=500"
+  },
+  {
+    id: "p6",
+    farmerId: "f4",
+    name: "Live Broiler Chicken",
+    category: "Poultry",
+    subcategory: "Broilers",
+    description: "9-week-old broilers weighing between 2.8kg - 3.2kg. Fully vaccinated, healthy, and fleshy. Ideal for celebrations and caterers.",
+    price: 8500,
+    unit: "Bird",
+    quantity: 150,
+    minOrder: 2,
+    harvestDate: "2026-06-29",
+    organic: false,
+    deliveryAvailable: true,
+    location: "Abak Town",
+    lga: "Abak",
+    town: "Abak Town",
+    status: "Available",
+    image: "https://images.unsplash.com/photo-1548550022-c14194051da3?w=500"
+  },
+  {
+    id: "p7",
+    farmerId: "f3",
+    name: "Sweet Ananas Pineapples",
+    category: "Fruits",
+    subcategory: "Pineapple",
+    description: "Extremely sweet, juicy pineapples harvested from our organic farm in Eket. Big sizes.",
+    price: 800,
+    unit: "Piece",
+    quantity: 300,
+    minOrder: 5,
+    harvestDate: "2026-06-30",
+    organic: true,
+    deliveryAvailable: true,
+    location: "Eket Town",
+    lga: "Eket",
+    town: "Eket Town",
+    status: "Available",
+    image: "https://images.unsplash.com/photo-1550258987-190a2d41a8ba?w=500"
+  }
+];
+
+export const INITIAL_MARKET_PRICES = [
+  {
+    id: "mp1",
+    product: "White Garri (per Basin)",
+    category: "Processed Products",
+    prices: { Itam: 2800, "Akpan Andem": 2900, "Ikot Ekpene": 2600, Eket: 3000 },
+    history: [
+      { date: "June 25", Itam: 2750, "Akpan Andem": 2850, "Ikot Ekpene": 2550, Eket: 2950 },
+      { date: "June 27", Itam: 2780, "Akpan Andem": 2880, "Ikot Ekpene": 2580, Eket: 2980 },
+      { date: "July 01", Itam: 2800, "Akpan Andem": 2900, "Ikot Ekpene": 2600, Eket: 3000 }
+    ]
+  },
+  {
+    id: "mp2",
+    product: "Red Palm Oil (per 5L)",
+    category: "Palm Products",
+    prices: { Itam: 6500, "Akpan Andem": 6700, "Ikot Ekpene": 6200, Eket: 7000 },
+    history: [
+      { date: "June 25", Itam: 6400, "Akpan Andem": 6600, "Ikot Ekpene": 6100, Eket: 6900 },
+      { date: "June 27", Itam: 6450, "Akpan Andem": 6650, "Ikot Ekpene": 6150, Eket: 6950 },
+      { date: "July 01", Itam: 6500, "Akpan Andem": 6700, "Ikot Ekpene": 6200, Eket: 7000 }
+    ]
+  },
+  {
+    id: "mp3",
+    product: "Fresh Catfish (per Kg)",
+    category: "Fish",
+    prices: { Itam: 3500, "Akpan Andem": 3600, "Ikot Ekpene": 3400, Eket: 3800 },
+    history: [
+      { date: "June 25", Itam: 3600, "Akpan Andem": 3700, "Ikot Ekpene": 3500, Eket: 3900 },
+      { date: "June 27", Itam: 3550, "Akpan Andem": 3650, "Ikot Ekpene": 3450, Eket: 3850 },
+      { date: "July 01", Itam: 3500, "Akpan Andem": 3600, "Ikot Ekpene": 3400, Eket: 3800 }
+    ]
+  },
+  {
+    id: "mp4",
+    product: "Chicken Eggs (per Crate)",
+    category: "Poultry",
+    prices: { Itam: 4200, "Akpan Andem": 4300, "Ikot Ekpene": 4100, Eket: 4500 },
+    history: [
+      { date: "June 25", Itam: 4000, "Akpan Andem": 4100, "Ikot Ekpene": 3900, Eket: 4300 },
+      { date: "June 27", Itam: 4100, "Akpan Andem": 4200, "Ikot Ekpene": 4000, Eket: 4400 },
+      { date: "July 01", Itam: 4200, "Akpan Andem": 4300, "Ikot Ekpene": 4100, Eket: 4500 }
+    ]
+  }
+];
+
+export const INITIAL_ORDERS = [
+  {
+    id: "ord-88392",
+    buyerId: "b1",
+    buyerName: "Chef Bassey",
+    buyerPhone: "07039876543",
+    farmerId: "f1",
+    farmerName: "Etim Okon",
+    productId: "p1",
+    productName: "White Garri (Premium quality)",
+    quantity: 10,
+    price: 2600,
+    totalAmount: 26000,
+    status: "Delivered",
+    date: "2026-06-28",
+    deliveryPartnerId: "l1",
+    paymentReceipt: "https://via.placeholder.com/150",
+    deliveryStatus: "Delivered",
+    review: {
+      rating: 5,
+      comment: "Excellent crispy garri! Tastes exactly as expected. Fast delivery.",
+      aspects: { quality: 5, communication: 5, delivery: 5, packaging: 5 }
+    }
+  },
+  {
+    id: "ord-92102",
+    buyerId: "b2",
+    buyerName: "Edidiong Hotel & Suites",
+    buyerPhone: "07059876543",
+    farmerId: "f3",
+    farmerName: "Imaobong Effiong",
+    productId: "p4",
+    productName: "Pure Red Palm Oil (5 Liters)",
+    quantity: 15,
+    price: 6500,
+    totalAmount: 97500,
+    status: "Paid",
+    date: "2026-06-30",
+    paymentReceipt: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+    deliveryPartnerId: null,
+    deliveryStatus: "Pending Accept"
+  }
+];
+
+export const INITIAL_MESSAGES = [
+  {
+    id: "m_thread_1",
+    members: ["b1", "f1"],
+    messages: [
+      { senderId: "b1", text: "Hello Etim, is your white garri available for immediate pick up?", timestamp: "2026-06-28T09:00:00Z" },
+      { senderId: "f1", text: "Yes Chef Bassey! I have up to 50 basins dry and ready right now.", timestamp: "2026-06-28T09:05:00Z" },
+      { senderId: "b1", text: "Great, placing an order for 10 basins. I will use manual transfer.", timestamp: "2026-06-28T09:07:00Z" },
+      { senderId: "f1", text: "Excellent, once I receive the order notification I will accept it.", timestamp: "2026-06-28T09:09:00Z" }
+    ]
+  }
+];
+
+export const INITIAL_NOTIFICATIONS = [
+  {
+    id: "n1",
+    userId: "f1",
+    title: "New Order Request",
+    message: "Chef Bassey has requested 10 basins of White Garri.",
+    read: true,
+    timestamp: "2026-06-28T09:10:00Z"
+  },
+  {
+    id: "n2",
+    userId: "b1",
+    title: "Order Accepted",
+    message: "Etim Okon has accepted your order ord-88392. Please make payment.",
+    read: true,
+    timestamp: "2026-06-28T09:15:00Z"
+  }
+];
+
+export const INITIAL_AUDIT_LOGS = [
+  { id: "al-1", timestamp: "2026-06-28T08:00:00Z", action: "User Registered", details: "Etim Okon registered as Farmer in Uyo/Itam" },
+  { id: "al-2", timestamp: "2026-06-28T08:30:00Z", action: "Verification Changed", details: "Etim Okon verification status upgraded to GOLD by Admin" },
+  { id: "al-3", timestamp: "2026-06-28T09:00:00Z", action: "Product Added", details: "Etim Okon uploaded White Garri listing" }
+];
