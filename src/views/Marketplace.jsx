@@ -3,7 +3,8 @@ import {
   Search, Filter, ShieldCheck, Heart, ShoppingBag, Calendar, Check, Send, 
   AlertCircle, RefreshCw, X, MessageSquare, Star, FileText, CreditCard, 
   Truck, MapPin, Sprout, Fish, Egg, Beef, Droplets, Package, Apple, 
-  CheckCircle2, ChevronRight, Copy, Award, Shield, Bell, Compass, Globe
+  CheckCircle2, ChevronRight, Copy, Award, Shield, Bell, Compass, Globe,
+  Users
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import PaystackCheckoutModal from "../components/PaystackCheckoutModal";
@@ -19,7 +20,9 @@ import {
   toggleFollowStore,
   updateBusinessStorefront,
   subscribeToPlan,
-  purchaseAd
+  purchaseAd,
+  createGroupBuyPool,
+  joinGroupBuyPool
 } from "../db/store";
 import Loader3D from "../components/Loader3D";
 
@@ -462,6 +465,7 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat, init
           <div className="marketplace-nav-tabs">
             {[
               { id: "listings", label: "Browse Products", icon: <ShoppingBag size={16} /> },
+              { id: "group_buys", label: "Cooperative Pools", icon: <Users size={16} /> },
               { id: "bulk", label: "Bulk Palm Oil", icon: <Droplets size={16} /> },
               { id: "farmers", label: "Farmers Directory", icon: <ShieldCheck size={16} /> },
               { id: "directory", label: "Business Directory", icon: <Compass size={16} /> },
@@ -546,6 +550,131 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat, init
               <button className="btn btn-primary btn-sm" onClick={() => setSelectedOrderForTracking(order)}>Confirm Delivery</button>
             </div>
           ))}
+        </div>
+      )}
+      {activeTab === "group_buys" && (
+        <div style={{ width: "100%" }}>
+          <div 
+            style={{ 
+              background: "linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(245, 158, 11, 0.18) 100%)", 
+              border: "1px solid var(--glass-border)", 
+              borderRadius: "16px", 
+              padding: "20px clamp(16px, 4vw, 24px)", 
+              marginBottom: "24px", 
+              position: "relative", 
+              overflow: "hidden"
+            }}
+          >
+            <span style={{ color: "var(--secondary-light)", fontSize: "0.75rem", fontWeight: "800", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "4px", display: "block" }}>Cooperative Logistics Hub</span>
+            <h3 style={{ fontSize: "clamp(1.2rem, 3.5vw, 1.6rem)", color: "white", fontWeight: "900", marginBottom: "6px" }}>LGA Cooperative Pools</h3>
+            <p style={{ color: "rgba(255,255,255,0.75)", fontSize: "0.85rem", maxWidth: "700px", lineHeight: 1.4, margin: 0 }}>
+              Group order volumes with other buyers in your LGA. Once the pool's target quantity is met, the bulk haulage shipment is dispatched and logistics shipping fees (₦12,000 inter-LGA / ₦2,500 local) are split proportionally among contributors.
+            </p>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: "8px" }}>
+            <h4 style={{ fontSize: "1.1rem", color: "white", margin: 0 }}>Active LGA Pools</h4>
+            <span style={{ fontSize: "0.8rem", color: "var(--gray-600)" }}>Join a pool or start one from a bulk listing</span>
+          </div>
+
+          {(!db.groupBuys || db.groupBuys.filter(p => p.status === "Active").length === 0) ? (
+            <div className="card" style={{ padding: "30px", textAlign: "center", borderStyle: "dashed" }}>
+              <p style={{ color: "var(--gray-600)", fontStyle: "italic", margin: 0 }}>No active cooperative pools found in your location. Start a new pool from any bulk listing.</p>
+            </div>
+          ) : (
+            <div className="product-grid" style={{ gap: "20px" }}>
+              {db.groupBuys.filter(p => p.status === "Active").map(pool => {
+                const percent = Math.min(100, Math.round((pool.currentQuantity / pool.targetQuantity) * 100));
+                const daysLeft = Math.max(0, Math.round((new Date(pool.deadline) - new Date()) / (1000 * 60 * 60 * 24)));
+                
+                return (
+                  <div key={pool.id} className="card" style={{ display: "flex", flexDirection: "column", borderLeft: "4px solid var(--secondary)", padding: "16px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px", flexWrap: "wrap", gap: "8px" }}>
+                      <div>
+                        <span style={{ fontSize: "0.7rem", background: "rgba(245,158,11,0.12)", color: "var(--secondary-light)", padding: "2px 8px", borderRadius: "8px", fontWeight: "bold" }}>
+                          📍 Pool Destination: {pool.lga} LGA
+                        </span>
+                        <h4 style={{ fontSize: "1.1rem", color: "white", margin: "6px 0 2px 0", fontWeight: "bold" }}>{pool.productName}</h4>
+                        <span style={{ fontSize: "0.75rem", color: "var(--gray-600)" }}>Farmer: {pool.farmerName}</span>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <strong style={{ fontSize: "1.1rem", color: "white" }}>₦{pool.price.toLocaleString()}</strong>
+                        <span style={{ fontSize: "0.7rem", color: "var(--gray-600)", display: "block" }}>per {pool.unit}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ margin: "12px 0", flex: 1 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.78rem", color: "var(--white)", marginBottom: "6px" }}>
+                        <span>Progress: <strong>{pool.currentQuantity} / {pool.targetQuantity} {pool.unit}s</strong></span>
+                        <span>{percent}%</span>
+                      </div>
+                      
+                      <div style={{ width: "100%", height: "8px", borderRadius: "4px", background: "rgba(255,255,255,0.05)", overflow: "hidden", position: "relative" }}>
+                        <div style={{ width: `${percent}%`, height: "100%", borderRadius: "4px", background: "linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%)", transition: "width 0.4s ease-out" }}></div>
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", color: "var(--gray-600)", marginTop: "8px" }}>
+                        <span>Contributors: <strong>{pool.contributors.length}</strong></span>
+                        <span style={{ color: daysLeft <= 2 ? "#ef4444" : "var(--gray-600)" }}>🕒 {daysLeft} days remaining</span>
+                      </div>
+
+                      {pool.contributors.length > 0 && (
+                        <div style={{ marginTop: "12px", background: "rgba(0,0,0,0.15)", borderRadius: "8px", padding: "8px 12px", maxHeight: "100px", overflowY: "auto" }}>
+                          <span style={{ fontSize: "0.7rem", color: "var(--gray-600)", display: "block", marginBottom: "4px", fontWeight: "bold" }}>Contributors list:</span>
+                          {pool.contributors.map((c, idx) => (
+                            <div key={idx} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", padding: "2px 0", borderBottom: idx < pool.contributors.length - 1 ? "1px solid rgba(255,255,255,0.02)" : "none" }}>
+                              <span style={{ color: "var(--white)" }}>{c.buyerName}</span>
+                              <span style={{ color: "var(--gray-600)" }}>{c.quantity} units (Split Fee: ₦{c.deliveryFeeShare.toLocaleString()})</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: "flex", gap: "10px", marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "14px" }}>
+                      <button 
+                        className="btn btn-outline btn-sm"
+                        style={{ flex: 1, padding: "8px" }}
+                        onClick={() => {
+                          const product = db.products.find(p => p.id === pool.productId);
+                          if (product) setSelectedProduct(product);
+                        }}
+                      >
+                        Inspect Product
+                      </button>
+                      <button 
+                        className="btn btn-secondary btn-sm"
+                        style={{ flex: 1.3, padding: "8px" }}
+                        onClick={() => {
+                          if (!activeUser) {
+                            onSwitchView("auth");
+                            return;
+                          }
+                          const quantity = prompt(`Enter quantity to buy and add to this pool (min 1 per join):`, "5");
+                          if (quantity) {
+                            const parsedQty = parseInt(quantity);
+                            if (parsedQty > 0) {
+                              const updatedDb = joinGroupBuyPool(pool.id, parsedQty);
+                              setDb(updatedDb);
+                              window.dispatchEvent(new Event("db_update"));
+                              window.dispatchEvent(new CustomEvent("add_toast", {
+                                detail: {
+                                  title: "Coop Pool Joined",
+                                  message: `Successfully contributed ${parsedQty} units to the pool!`
+                                }
+                              }));
+                            }
+                          }
+                        }}
+                      >
+                        Join Pool
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
       {activeTab === "bulk" && (
@@ -978,22 +1107,23 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat, init
                     // Calculate dynamic badges
                     let badge = null;
                     if (product.quantity < 10) {
-                      badge = <span className="product-card-badge last-units">Low Stock ({product.quantity})</span>;
+                      badge = <span className="product-card-badge last-units" style={{ position: "absolute", top: "12px", left: "12px", background: "#ef4444", color: "white", padding: "4px 8px", borderRadius: "20px", fontSize: "0.7rem", fontWeight: "bold", zIndex: 5 }}>Low Stock ({product.quantity})</span>;
                     } else if (product.organic) {
-                      badge = <span className="product-card-badge fresh">Organic Fresh</span>;
+                      badge = <span className="product-card-badge fresh" style={{ position: "absolute", top: "12px", left: "12px", background: "var(--primary)", color: "black", padding: "4px 8px", borderRadius: "20px", fontSize: "0.7rem", fontWeight: "bold", zIndex: 5 }}>Organic Fresh</span>;
                     } else {
-                      badge = <span className="product-card-badge limited">Direct Farm</span>;
+                      badge = <span className="product-card-badge limited" style={{ position: "absolute", top: "12px", left: "12px", background: "rgba(255,255,255,0.1)", backdropFilter: "blur(4px)", color: "white", padding: "4px 8px", borderRadius: "20px", fontSize: "0.7rem", fontWeight: "bold", zIndex: 5 }}>Direct Farm</span>;
                     }
 
                     return (
                       <motion.div 
                         key={product.id} 
                         variants={cardFadeIn}
-                        className="product-card"
+                        className="product-showcase-card card-enhanced"
+                        style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", position: "relative" }}
                         whileHover={{ y: -6, transition: { duration: 0.2 } }}
                       >
-                        <div className="product-img-wrapper">
-                          <img src={product.image} alt={product.name} className="product-img" />
+                        <div className="product-img-wrapper" style={{ position: "relative", height: "160px", overflow: "hidden" }}>
+                          <img src={product.image} alt={product.name} className="product-img" style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.5s ease" }} />
                           {badge}
                           
                           {/* Quick Action Overlay Buttons */}
@@ -1023,7 +1153,7 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat, init
                             >
                               <Bell size={12} fill={alerts.includes(product.id) ? "black" : "none"} />
                             </button>
-
+ 
                             {/* Compare Toggle */}
                             <button 
                               type="button"
@@ -1050,49 +1180,56 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat, init
                               <RefreshCw size={12} className={compareList.some(p => p.id === product.id) ? "rotate-animation" : ""} />
                             </button>
                           </div>
-
-                          <div className="product-farmer-badge">
+ 
+                          <div className="product-farmer-badge" style={{ position: "absolute", bottom: "12px", left: "12px", zIndex: 10 }}>
                             <img 
                               src={farmer.avatar} 
                               alt={farmer.name} 
                               className="avatar-small" 
-                              style={{ border: "2px solid var(--white)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)", cursor: "pointer" }} 
+                              style={{ width: "32px", height: "32px", borderRadius: "50%", border: "2px solid var(--white)", boxShadow: "0 2px 6px rgba(0,0,0,0.3)", cursor: "pointer" }} 
                               onClick={() => setSelectedFarmer(farmer)}
                               title={`View profile of ${farmer.name}`}
                             />
                           </div>
                         </div>
                         
-                        <div className="product-details">
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                            <span className="product-cat">{product.category}</span>
-                            <span style={{ fontSize: "0.8rem", color: "var(--primary)", fontWeight: "600" }}>📍 {product.lga}</span>
+                        <div className="product-details" style={{ padding: "16px", display: "flex", flexDirection: "column", flex: 1 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                            <span className="product-cat" style={{ fontSize: "0.75rem", textTransform: "uppercase", fontWeight: "bold", color: "var(--primary-light)" }}>{product.category}</span>
+                            <span style={{ fontSize: "0.8rem", color: "var(--secondary-light)", fontWeight: "600" }}>📍 {product.lga}</span>
                           </div>
-                          <h4 className="product-name">{product.name}</h4>
                           
-                          <div className="product-meta">
+                          <h4 className="product-name" style={{ fontSize: "1.05rem", fontWeight: "bold", margin: "0 0 6px 0", color: "white" }}>{product.name}</h4>
+                          
+                          <div className="product-meta" style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "var(--gray-600)", marginBottom: "10px" }}>
                             <span style={{ cursor: "pointer" }} onClick={() => setSelectedFarmer(farmer)}>
                               Farmer: <strong style={{ color: "white" }}>{farmer.name}</strong>
                             </span>
-                            <span className="product-rating-compact" style={{ cursor: "pointer" }} onClick={() => setSelectedFarmer(farmer)}>
-                              <Star size={12} fill="currentColor" /> {farmer.rating || "5.0"} ({farmer.reviewsCount || 0})
+                            <span className="product-rating-compact" style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "3px", color: "var(--warning)" }} onClick={() => setSelectedFarmer(farmer)}>
+                              <Star size={12} fill="currentColor" /> {farmer.rating || "5.0"}
                             </span>
                           </div>
-
-                          <p style={{ fontSize: "0.82rem", color: "var(--gray-600)", marginBottom: "16px", flex: 1, lineHeight: 1.45 }}>
+ 
+                          <p style={{ fontSize: "0.82rem", color: "var(--gray-600)", marginBottom: "12px", flex: 1, lineHeight: 1.45 }}>
                             {product.description.length > 80 ? product.description.substring(0, 85) + "..." : product.description}
                           </p>
 
-                          <div className="product-price-row">
-                            <div className="product-price">
-                              ₦{product.price.toLocaleString()} <span style={{ fontSize: "0.8rem", color: "var(--gray-600)" }}>/ {product.unit}</span>
+                          {/* Escrow Badge */}
+                          <div className="escrow-secure-badge" style={{ marginBottom: "14px", width: "fit-content" }}>
+                            <Shield size={11} />
+                            <span>Escrow Protected</span>
+                          </div>
+ 
+                          <div className="product-price-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto", borderTop: "1px solid rgba(255,255,255,0.04)", paddingTop: "12px" }}>
+                            <div className="product-price" style={{ fontSize: "1.15rem", fontWeight: "bold", color: "var(--secondary-light)" }}>
+                              ₦{product.price.toLocaleString()} <span style={{ fontSize: "0.75rem", color: "var(--gray-600)", fontWeight: "normal" }}>/ {product.unit}</span>
                             </div>
                             
-                            <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+                            <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
                               <button 
                                 type="button"
                                 className="btn btn-outline btn-sm"
-                                style={{ padding: "8px", borderRadius: "50%", minWidth: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center" }}
+                                style={{ padding: "0", borderRadius: "50%", width: "34px", height: "34px", display: "flex", alignItems: "center", justifyContent: "center", minWidth: "34px" }}
                                 onClick={() => handleAddToCart(product)}
                                 title="Add to Cart"
                               >
@@ -1100,7 +1237,7 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat, init
                               </button>
                               <button 
                                 className="btn btn-primary btn-sm"
-                                style={{ padding: "8px 16px", borderRadius: "20px", fontWeight: "800" }}
+                                style={{ padding: "6px 14px", borderRadius: "20px", fontWeight: "800", fontSize: "0.8rem" }}
                                 onClick={() => {
                                   if (!activeUser) {
                                     onSwitchView("auth");
@@ -1621,15 +1758,49 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat, init
                 );
               })()}
 
-              <div style={{ display: "flex", gap: "12px", marginTop: "20px" }}>
-                <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setSelectedProduct(null)}>Cancel</button>
-                <button 
-                  className="btn btn-primary" 
-                  style={{ flex: 2 }}
-                  onClick={() => handlePlaceOrder(selectedProduct)}
-                >
-                  Submit Order Request
-                </button>
+              <div style={{ display: "flex", gap: "12px", marginTop: "20px", flexDirection: "column" }}>
+                <div style={{ display: "flex", gap: "12px", width: "100%" }}>
+                  <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setSelectedProduct(null)}>Cancel</button>
+                  <button 
+                    className="btn btn-primary" 
+                    style={{ flex: 2 }}
+                    onClick={() => handlePlaceOrder(selectedProduct)}
+                  >
+                    Direct Escrow Purchase
+                  </button>
+                </div>
+                {(selectedProduct.isBulk || selectedProduct.price >= 5000) && (
+                  <button 
+                    className="btn btn-secondary animate-pulse" 
+                    style={{ width: "100%", padding: "12px" }}
+                    onClick={() => {
+                      if (!activeUser) {
+                        onSwitchView("auth");
+                        setSelectedProduct(null);
+                        return;
+                      }
+                      const target = prompt(`Enter pool target quantity (e.g. 50, 100 units):`, "50");
+                      if (target) {
+                        const parsedTarget = parseInt(target);
+                        if (parsedTarget > 0) {
+                          const updatedDb = createGroupBuyPool(selectedProduct.id, parsedTarget);
+                          setDb(updatedDb);
+                          setSelectedProduct(null);
+                          setActiveTab("group_buys");
+                          window.dispatchEvent(new Event("db_update"));
+                          window.dispatchEvent(new CustomEvent("add_toast", {
+                            detail: {
+                              title: "Group Buy Started",
+                              message: `Group buy pool successfully created targeting ${parsedTarget} units!`
+                            }
+                          }));
+                        }
+                      }
+                    }}
+                  >
+                    Start a Cooperative Group Buy Pool
+                  </button>
+                )}
               </div>
             </motion.div>
           </motion.div>
@@ -1703,11 +1874,11 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat, init
                     <h3>Invoice & Escrow Payment</h3>
                     <button onClick={() => setCurrentInvoice(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "white" }}><X size={20} /></button>
                   </div>
-
+ 
                   <p style={{ fontSize: "0.85rem", color: "var(--gray-600)", marginBottom: "16px" }}>
                     Order request has been approved by the farmer. Choose a payment method to lock the funds in Escrow.
                   </p>
-
+ 
                   {/* Invoice Summary Box */}
                   <div className="invoice-box" style={{ background: "rgba(0,0,0,0.2)", padding: "16px", borderRadius: "10px", border: "1px solid var(--glass-border)", marginBottom: "20px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "0.85rem" }}>
@@ -1743,13 +1914,13 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat, init
                         <span>₦{(currentInvoice.deliveryFee || 0).toLocaleString()}</span>
                       </div>
                     </div>
-
+ 
                     <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px dashed var(--glass-border)", paddingTop: "8px", marginTop: "8px", fontWeight: "bold", fontSize: "1.1rem", color: "var(--secondary-light)" }}>
                       <span>Amount Due:</span>
                       <span>₦{currentInvoice.totalAmount.toLocaleString()}</span>
                     </div>
                   </div>
-
+ 
                   {/* Payment Channel Selector */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px", marginTop: "12px" }}>
                     <div 
@@ -1760,11 +1931,11 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat, init
                       <CreditCard size={20} style={{ color: "var(--primary-light)" }} />
                       <div style={{ flex: 1, textAlign: "left" }}>
                         <strong style={{ color: "white", display: "block" }}>Paystack Checkout</strong>
-                        <small style={{ color: "var(--gray-600)" }}>Secure payment via Cards, Bank Transfer, or USSD</small>
+                        <small style={{ color: "var(--gray-600)" }}>Secure card billing & USSD</small>
                       </div>
                       <input type="radio" checked={paymentMethod === "paystack"} readOnly />
                     </div>
-
+ 
                     <div 
                       className={`card ${paymentMethod === "wallet" ? "active" : ""}`}
                       style={{ padding: "16px", cursor: "pointer", display: "flex", alignItems: "center", gap: "12px", border: `1px solid ${paymentMethod === "wallet" ? "var(--primary)" : "var(--glass-border)"}`, background: "rgba(255,255,255,0.02)" }}
@@ -1773,38 +1944,99 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat, init
                       <FileText size={20} style={{ color: "var(--secondary-light)" }} />
                       <div style={{ flex: 1, textAlign: "left" }}>
                         <strong style={{ color: "white", display: "block" }}>Platform Wallet Balance</strong>
-                        <small style={{ color: "var(--gray-600)" }}>Pay using your existing virtual account balance</small>
+                        <small style={{ color: "var(--gray-600)" }}>Virtual account balance check</small>
                       </div>
                       <input type="radio" checked={paymentMethod === "wallet"} readOnly />
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", gap: "12px" }}>
-                    <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => setCurrentInvoice(null)}>Cancel</button>
-                    <button 
-                      type="button" 
-                      className="btn btn-primary" 
-                      style={{ flex: 2 }}
-                      onClick={() => {
-                        if (paymentMethod === "paystack") {
-                          setShowPaystackModal(true);
-                        } else {
-                          // Wallet processing simulation
-                          setPaymentProcessing(true);
-                          setLoadingMessage("Debiting platform wallet balance...");
-                          setTimeout(() => {
-                            setPaymentProcessing(false);
-                            const updatedDb = updateOrderStatus(currentInvoice.id, "Paid");
-                            setDb(updatedDb);
-                            setPaymentSuccess(true);
-                            window.dispatchEvent(new Event("db_update"));
-                          }, 1500);
-                        }
-                      }}
-                    >
-                      {paymentMethod === "paystack" ? "Proceed to Paystack" : "Confirm Wallet Payment"}
-                    </button>
-                  </div>
+                  {paymentMethod === "paystack" ? (
+                    <form onSubmit={handlePaymentSubmit} className="paystack-credit-card-form" style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
+                      <h4 style={{ margin: "0 0 6px 0", fontSize: "0.95rem", color: "white", display: "flex", alignItems: "center", gap: "6px" }}><CreditCard size={16} style={{ color: "var(--primary-light)" }} /> Card Payment Details</h4>
+                      <div className="form-field">
+                        <label style={{ fontSize: "0.75rem", color: "var(--gray-600)", display: "block", marginBottom: "4px" }}>Cardholder Name</label>
+                        <input 
+                          type="text" 
+                          placeholder="John Doe" 
+                          value={cardName} 
+                          onChange={(e) => setCardName(e.target.value)} 
+                          style={{ padding: "8px 12px", fontSize: "0.85rem", width: "100%", borderRadius: "8px", border: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.2)", color: "white" }}
+                          required 
+                        />
+                      </div>
+                      <div className="form-field">
+                        <label style={{ fontSize: "0.75rem", color: "var(--gray-600)", display: "block", marginBottom: "4px" }}>Card Number</label>
+                        <input 
+                          type="text" 
+                          placeholder="4000 1234 5678 9010" 
+                          value={cardNumber} 
+                          onChange={(e) => setCardNumber(e.target.value)} 
+                          style={{ padding: "8px 12px", fontSize: "0.85rem", width: "100%", borderRadius: "8px", border: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.2)", color: "white" }}
+                          required 
+                        />
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                        <div className="form-field">
+                          <label style={{ fontSize: "0.75rem", color: "var(--gray-600)", display: "block", marginBottom: "4px" }}>Expiry Date</label>
+                          <input 
+                            type="text" 
+                            placeholder="MM/YY" 
+                            value={cardExpiry} 
+                            onChange={(e) => setCardExpiry(e.target.value)} 
+                            style={{ padding: "8px 12px", fontSize: "0.85rem", width: "100%", borderRadius: "8px", border: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.2)", color: "white" }}
+                            required 
+                          />
+                        </div>
+                        <div className="form-field">
+                          <label style={{ fontSize: "0.75rem", color: "var(--gray-600)", display: "block", marginBottom: "4px" }}>CVV</label>
+                          <input 
+                            type="text" 
+                            placeholder="123" 
+                            value={cardCvc} 
+                            onChange={(e) => setCardCvc(e.target.value)} 
+                            style={{ padding: "8px 12px", fontSize: "0.85rem", width: "100%", borderRadius: "8px", border: "1px solid var(--glass-border)", background: "rgba(0,0,0,0.2)", color: "white" }}
+                            required 
+                          />
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: "flex", gap: "12px", marginTop: "12px" }}>
+                        <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => setCurrentInvoice(null)}>Cancel</button>
+                        <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>
+                          Pay ₦{currentInvoice.totalAmount.toLocaleString()} Securely
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginBottom: "20px" }}>
+                      <div className="card" style={{ padding: "16px", background: "rgba(16,185,129,0.05)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "12px" }}>
+                        <div style={{ fontSize: "0.8rem", color: "var(--gray-600)" }}>Available Wallet Balance</div>
+                        <h3 style={{ fontSize: "1.8rem", fontWeight: "bold", margin: "6px 0", color: "var(--primary-light)" }}>₦450,000</h3>
+                        <div style={{ fontSize: "0.75rem", color: "var(--gray-800)" }}>Sterling Cooperative Integrated Credit</div>
+                      </div>
+                      <div style={{ display: "flex", gap: "12px", marginTop: "12px" }}>
+                        <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => setCurrentInvoice(null)}>Cancel</button>
+                        <button 
+                          type="button" 
+                          className="btn btn-primary" 
+                          style={{ flex: 2 }}
+                          onClick={() => {
+                            setPaymentProcessing(true);
+                            setLoadingMessage("Debiting platform wallet balance...");
+                            setTimeout(() => {
+                              setPaymentProcessing(false);
+                              const updatedDb = updateOrderStatus(currentInvoice.id, "Paid");
+                              setDb(updatedDb);
+                              setPaymentSuccess(true);
+                              window.dispatchEvent(new Event("db_update"));
+                            }, 1500);
+                          }}
+                        >
+                          Confirm Wallet Payment
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </motion.div>
@@ -1818,18 +2050,22 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat, init
             { status: "Paid", label: "Escrow Secured", desc: "Funds locked in Sterling Cooperative Escrow", icon: <CreditCard size={14} /> },
             { status: "Assigned", label: "Carrier Assigned", desc: "Logistics courier partner accepted shipment", icon: <User size={14} /> },
             { status: "Picked Up", label: "Picked Up", desc: "Cargo claimed and loaded by carrier", icon: <Package size={14} /> },
-            { status: "En Route", label: "En Route", desc: "Courier is transporting cargo to destination", icon: <Truck size={14} /> },
+            { status: "In Transit", label: "En Route", desc: "Courier is transporting cargo to destination", icon: <Truck size={14} /> },
             { status: "Delivered", label: "Delivered", desc: "Produce arrived at dropsite. Awaiting release", icon: <MapPin size={14} /> },
             { status: "Completed", label: "Escrow Released", desc: "Escrow funds disbursed to farmer. Completed!", icon: <CheckCircle2 size={14} /> }
           ];
 
           const getStepIndex = (status) => {
-            if (status === "Reviewed") return 6;
-            return ORDER_STATUS_STEPS.findIndex(step => step.status === status);
+            if (status === "Reviewed" || status === "Completed") return 6;
+            if (status === "Delivered") return 5;
+            if (status === "Out for Delivery") return 5;
+            if (status === "In Transit" || status === "Picked Up") return 4;
+            if (status === "Assigned") return 2;
+            if (status === "Paid") return 1;
+            return 0;
           };
 
           const currentIdx = getStepIndex(selectedOrderForTracking.status);
-          const progressHeight = `${(currentIdx / (ORDER_STATUS_STEPS.length - 1)) * 100}%`;
 
           return (
             <motion.div 
@@ -1840,7 +2076,7 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat, init
             >
               <motion.div 
                 className="modal-content" 
-                style={{ maxWidth: "550px" }}
+                style={{ maxWidth: "550px", maxHeight: "95vh", overflowY: "auto" }}
                 initial={{ scale: 0.9, y: 15 }}
                 animate={{ scale: 1, y: 0 }}
                 exit={{ scale: 0.9, y: 15 }}
@@ -1870,42 +2106,41 @@ export default function Marketplace({ activeUser, onSwitchView, onOpenChat, init
                   </div>
                 </div>
 
+                {/* Realtime transit tracking overlay */}
+                {(selectedOrderForTracking.status === "In Transit" || selectedOrderForTracking.status === "Out for Delivery" || selectedOrderForTracking.deliveryStatus === "In Transit" || selectedOrderForTracking.deliveryStatus === "Out for Delivery") && (
+                  <div style={{ background: "rgba(0, 0, 0, 0.2)", padding: "14px", borderRadius: "10px", border: "1px solid var(--glass-border)", marginBottom: "20px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", color: "white", marginBottom: "6px" }}>
+                      <span>🚚 Transit Progress:</span>
+                      <strong>{selectedOrderForTracking.transitPercentage || 0}% ({selectedOrderForTracking.deliveryStatus})</strong>
+                    </div>
+                    <div style={{ width: "100%", height: "8px", borderRadius: "4px", background: "rgba(255,255,255,0.05)", overflow: "hidden" }}>
+                      <div style={{ width: `${selectedOrderForTracking.transitPercentage || 0}%`, height: "100%", background: "var(--primary)", transition: "width 0.3s ease" }}></div>
+                    </div>
+                    <span style={{ fontSize: "0.75rem", color: "var(--gray-600)", marginTop: "6px", display: "block", textAlign: "center" }}>
+                      Cargo is currently tracking on the interactive LGA radar map.
+                    </span>
+                  </div>
+                )}
+
                 {/* Realtime Stepper Timeline */}
-                <div className="timeline-stepper">
-                  <div 
-                    className="timeline-stepper-progress" 
-                    style={{ height: progressHeight }} 
-                  />
-                  
+                <div className="order-lifecycle-tracker">
                   {ORDER_STATUS_STEPS.map((step, idx) => {
                     const isCompleted = idx < currentIdx;
                     const isActive = idx === currentIdx;
                     
-                    let stepClass = "timeline-step";
+                    let stepClass = "order-tracker-step";
                     if (isActive) stepClass += " active";
                     else if (isCompleted) stepClass += " completed";
                     else stepClass += " pending";
                     
                     return (
-                      <div key={idx} className={stepClass}>
-                        <div className="timeline-node">
-                          {isActive ? (
-                            <div style={{ color: "var(--dark)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              {step.icon}
-                            </div>
-                          ) : isCompleted ? (
-                            <div style={{ color: "var(--primary-light)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              <Check size={12} />
-                            </div>
-                          ) : (
-                            <div style={{ color: "var(--gray-600)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              {step.icon}
-                            </div>
-                          )}
+                      <div key={idx} className={stepClass} style={{ display: "flex", alignItems: "flex-start" }}>
+                        <div className="order-tracker-dot">
+                          {isCompleted ? <Check size={12} style={{ color: "var(--dark)" }} /> : step.icon}
                         </div>
-                        <div className="timeline-content">
+                        <div style={{ marginLeft: "12px", flex: 1 }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                            <strong style={{ color: isActive ? "white" : isCompleted ? "var(--gray-800)" : "var(--gray-600)", fontSize: "0.95rem" }}>
+                            <strong style={{ color: isActive ? "var(--primary-light)" : isCompleted ? "white" : "var(--gray-600)", fontSize: "0.95rem" }}>
                               {step.label}
                             </strong>
                             {isActive && (

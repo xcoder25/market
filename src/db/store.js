@@ -32,6 +32,26 @@ export const getDB = () => {
       auditLogs: INITIAL_AUDIT_LOGS,
       subscriptionPayments: INITIAL_SUBSCRIPTION_PAYMENTS || [],
       adPayments: INITIAL_AD_PAYMENTS || [],
+      groupBuys: [
+        {
+          id: "gb-1",
+          productId: "p2",
+          productName: "Fresh Yellow Cassava Tubers",
+          farmerId: "f1",
+          farmerName: "Etim Okon",
+          lga: "Uyo",
+          targetQuantity: 50,
+          currentQuantity: 35,
+          price: 11000,
+          unit: "Bag (100kg)",
+          deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          status: "Active",
+          contributors: [
+            { buyerId: "b1", buyerName: "Chef Bassey", quantity: 15, deliveryFeeShare: 750 },
+            { buyerId: "b2", buyerName: "Edidiong Hotel & Suites", quantity: 20, deliveryFeeShare: 1000 }
+          ]
+        }
+      ],
       currentUser: null,
       currentRole: null
     };
@@ -40,6 +60,31 @@ export const getDB = () => {
   }
   const db = JSON.parse(data);
   let updated = false;
+
+  // Sync groupBuys array if not present
+  if (!db.groupBuys) {
+    db.groupBuys = [
+      {
+        id: "gb-1",
+        productId: "p2",
+        productName: "Fresh Yellow Cassava Tubers",
+        farmerId: "f1",
+        farmerName: "Etim Okon",
+        lga: "Uyo",
+        targetQuantity: 50,
+        currentQuantity: 35,
+        price: 11000,
+        unit: "Bag (100kg)",
+        deadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        status: "Active",
+        contributors: [
+          { buyerId: "b1", buyerName: "Chef Bassey", quantity: 15, deliveryFeeShare: 750 },
+          { buyerId: "b2", buyerName: "Edidiong Hotel & Suites", quantity: 20, deliveryFeeShare: 1000 }
+        ]
+      }
+    ];
+    updated = true;
+  }
 
   // Sync payments arrays if not present
   if (!db.subscriptionPayments) {
@@ -608,6 +653,38 @@ export const queryAI = (queryText) => {
     };
   }
 
+  // 3b. Escrow system query
+  if (text.includes("escrow") || text.includes("sterling") || text.includes("vault")) {
+    return {
+      type: "text",
+      message: `🔒 **IbomOne Secure Escrow Safeguard**:\n\nAll payments are held securely in the **Sterling Bank Cooperative Escrow Vault**.\n\n1. **Buyer Pays:** Funds are locked safely.\n2. **Logistics Dispatch:** Transporter delivers cargo.\n3. **Inspection & Release:** Buyer inspects produce, clicks 'Confirm Receipt' to release funds to the farmer's wallet.`,
+      items: []
+    };
+  }
+
+  // 3c. Cooperative / Group buy query
+  if (text.includes("pool") || text.includes("cooperative") || text.includes("group buy")) {
+    const activePools = db.groupBuys?.filter(p => p.status === "Active") || [];
+    const poolListText = activePools.length > 0 
+      ? activePools.map(p => `- **${p.productName}** in ${p.lga} LGA (${p.currentQuantity}/${p.targetQuantity} units)`).join("\n")
+      : "No active cooperative pools at this moment.";
+      
+    return {
+      type: "text",
+      message: `🌾 **Cooperative Group-Buying Pools**:\n\nGroup orders with other buyers to split bulk logistics haulage carrier fees proportionally!\n\n**Active LGA Pools:**\n${poolListText}\n\n*Navigate to the 'Cooperative Pools' tab to join a pool or start one from any bulk listing.*`,
+      items: []
+    };
+  }
+
+  // 3d. Transport / Logistics fee query
+  if (text.includes("transport") || text.includes("cost") || text.includes("fee") || text.includes("logistics") || text.includes("delivery")) {
+    return {
+      type: "text",
+      message: `🚚 **Platform Carrier Shipping Rates**:\n\n- 🏍️ **Local Retail (Motorcycle):** ₦1,000\n- 🛺 **Local Bulk Cargo (Tricycle):** ₦2,500\n- 📦 **Inter-LGA Light Shipping:** ₦3,500\n- 🚛 **Inter-LGA Bulk Haulage (Truck):** ₦12,000\n\n*Note: Joining Cooperative pools splits bulk delivery costs proportionally among LGA buyers!*`,
+      items: []
+    };
+  }
+
   // 4. Vehicles / Cars Query
   if (text.includes("car") || text.includes("motorcycle") || text.includes("toyota") || text.includes("suzuki") || text.includes("spare parts")) {
     const results = db.products.filter(p => 
@@ -793,5 +870,159 @@ export const purchaseAd = (adType, price) => {
   addAuditLog(db, "Ad Space Purchased", `${user.name} purchased ${adType} advertising (₦${price.toLocaleString()})`);
   addNotification(db, user.id, "Ad Campaign Active", `Your ${adType} campaign has been launched successfully!`);
   saveDB(db);
+  return db;
+};
+
+export const createGroupBuyPool = (productId, targetQuantity, deadline) => {
+  const db = getDB();
+  const product = db.products.find(p => p.id === productId);
+  if (!product) return db;
+
+  const user = db.currentUser;
+  if (!user) return db;
+
+  const poolId = "gb-" + Date.now();
+  const newPool = {
+    id: poolId,
+    productId: product.id,
+    productName: product.name,
+    farmerId: product.farmerId,
+    farmerName: db.users.find(u => u.id === product.farmerId)?.name || "Farmer",
+    lga: user.lga || "Uyo",
+    targetQuantity: parseInt(targetQuantity),
+    currentQuantity: 0,
+    price: product.price,
+    unit: product.unit,
+    deadline: deadline || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    status: "Active",
+    contributors: []
+  };
+
+  if (!db.groupBuys) db.groupBuys = [];
+  db.groupBuys.push(newPool);
+
+  addAuditLog(db, "Group Buy Created", `${user.name} created group buy pool ${poolId} for ${product.name}`);
+  addNotification(db, product.farmerId, "Group Buy Pool Started", `A group buy pool has been started for your product ${product.name} targeting ${targetQuantity} units.`);
+  saveDB(db);
+  return db;
+};
+
+export const joinGroupBuyPool = (poolId, quantity) => {
+  const db = getDB();
+  const poolIndex = db.groupBuys.findIndex(p => p.id === poolId);
+  if (poolIndex === -1) return db;
+
+  const pool = db.groupBuys[poolIndex];
+  const user = db.currentUser;
+  if (!user) return db;
+
+  const qty = parseInt(quantity);
+  const totalQuantityAfterJoin = pool.currentQuantity + qty;
+
+  // Split delivery fee proportionally. LGA bulk cargo = 2500, inter-LGA haulage = 12000.
+  const product = db.products.find(p => p.id === pool.productId);
+  const farmerLga = product ? product.lga : pool.lga;
+  const isLocal = pool.lga.toLowerCase() === farmerLga.toLowerCase();
+  const totalDeliveryFee = isLocal ? 2500 : 12000;
+
+  const existingContribIndex = pool.contributors.findIndex(c => c.buyerId === user.id);
+  if (existingContribIndex !== -1) {
+    pool.contributors[existingContribIndex].quantity += qty;
+  } else {
+    pool.contributors.push({
+      buyerId: user.id,
+      buyerName: user.name,
+      buyerPhone: user.phone || "08000000000",
+      quantity: qty,
+      deliveryFeeShare: 0
+    });
+  }
+
+  pool.currentQuantity = totalQuantityAfterJoin;
+
+  // Recalculate delivery fee share for all contributors
+  pool.contributors.forEach(c => {
+    c.deliveryFeeShare = Math.round((c.quantity / pool.targetQuantity) * totalDeliveryFee);
+  });
+
+  addAuditLog(db, "Joined Group Buy", `${user.name} contributed ${qty} units to group buy pool ${poolId}`);
+  
+  if (pool.currentQuantity >= pool.targetQuantity) {
+    pool.status = "Completed";
+    
+    pool.contributors.forEach(contrib => {
+      const subtotal = pool.price * contrib.quantity;
+      const escrowFee = Math.round(subtotal * 0.03);
+      const deliveryFee = contrib.deliveryFeeShare;
+      const totalAmount = subtotal + escrowFee + deliveryFee;
+
+      const orderId = "ord-" + Math.floor(10000 + Math.random() * 90000);
+      const newOrder = {
+        id: orderId,
+        buyerId: contrib.buyerId,
+        buyerName: contrib.buyerName,
+        buyerPhone: contrib.buyerPhone,
+        farmerId: pool.farmerId,
+        farmerName: pool.farmerName,
+        productId: pool.productId,
+        productName: pool.productName,
+        quantity: contrib.quantity,
+        price: pool.price,
+        subtotal,
+        discount: 0,
+        escrowFee,
+        deliveryFee,
+        deliveryType: isLocal ? "Local Bulk Cargo (Pooled)" : "Inter-LGA Haulage (Pooled)",
+        totalAmount,
+        status: "Paid",
+        date: new Date().toISOString().split("T")[0],
+        deliveryPartnerId: null,
+        deliveryStatus: "Pending Accept",
+        paymentReceipt: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+        poolId: pool.id,
+        isGroupBuy: true,
+        transitPercentage: 0
+      };
+
+      db.orders.unshift(newOrder);
+      addNotification(db, contrib.buyerId, "Group Buy Succeeded!", `Your pool for ${pool.productName} has succeeded! Order ${orderId} has been created and escrow payment is locked.`);
+    });
+
+    addNotification(db, pool.farmerId, "Group Buy Pool Filled", `Group buy pool for ${pool.productName} is filled. ${pool.currentQuantity} units ordered!`);
+    addAuditLog(db, "Group Buy Completed", `Pool ${poolId} completed. Generated orders.`);
+  } else {
+    addNotification(db, pool.farmerId, "Group Buy Progress", `Group buy pool for ${pool.productName} is now at ${pool.currentQuantity}/${pool.targetQuantity} units.`);
+  }
+
+  saveDB(db);
+  return db;
+};
+
+export const updateShipmentProgress = (orderId, transitPercentage, status) => {
+  const db = getDB();
+  const index = db.orders.findIndex(o => o.id === orderId);
+  if (index !== -1) {
+    const order = db.orders[index];
+    order.transitPercentage = Math.min(100, Math.max(0, parseInt(transitPercentage)));
+    if (status) {
+      order.deliveryStatus = status;
+      if (status === "Delivered") {
+        order.status = "Delivered";
+        addNotification(db, order.buyerId, "Order Delivered", `Your cargo for order ${orderId} has arrived! Please confirm receipt.`);
+      }
+    }
+    
+    if (order.transitPercentage > 0 && order.transitPercentage < 100) {
+      order.deliveryStatus = "In Transit";
+      order.status = "In Transit";
+    } else if (order.transitPercentage === 100 && order.deliveryStatus !== "Delivered") {
+      order.deliveryStatus = "Out for Delivery";
+      order.status = "Out for Delivery";
+    }
+
+    addAuditLog(db, "Shipment Updated", `Order ${orderId} shipment progress updated to ${order.transitPercentage}% (${order.deliveryStatus})`);
+    saveDB(db);
+    window.dispatchEvent(new Event("db_update"));
+  }
   return db;
 };

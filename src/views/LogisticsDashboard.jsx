@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Truck, MapPin, Package, CheckSquare, DollarSign, Star, Navigation, RefreshCw, Check, Clock, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { getDB, logisticsClaimJob, updateDeliveryStatus } from "../db/store";
+import { getDB, logisticsClaimJob, updateDeliveryStatus, updateShipmentProgress, saveDB } from "../db/store";
 import Loader3D from "../components/Loader3D";
 
 export default function LogisticsDashboard({ activeUser }) {
@@ -92,6 +92,35 @@ export default function LogisticsDashboard({ activeUser }) {
   const getBuyerLocation = (buyerId) => {
     const buyer = db.users.find(u => u.id === buyerId);
     return buyer ? `${buyer.address}, ${buyer.town}, ${buyer.lga}` : "Akwa Ibom";
+  };
+
+  const handlePlaceBid = (orderId, bidAmount) => {
+    setActionLoading(true);
+    setLoadingMessage("Submitting logistics bid proposal...");
+    setTimeout(() => {
+      const currentDb = getDB();
+      const orderIdx = currentDb.orders.findIndex(o => o.id === orderId);
+      if (orderIdx !== -1) {
+        const order = currentDb.orders[orderIdx];
+        if (!order.logisticsBids) order.logisticsBids = [];
+        const existingIdx = order.logisticsBids.findIndex(b => b.driverId === activeUser.id);
+        if (existingIdx !== -1) {
+          order.logisticsBids[existingIdx].amount = parseInt(bidAmount);
+        } else {
+          order.logisticsBids.push({
+            driverId: activeUser.id,
+            driverName: activeUser.name,
+            amount: parseInt(bidAmount),
+            date: new Date().toISOString().split('T')[0]
+          });
+        }
+        saveDB(currentDb);
+        setDb(currentDb);
+        setActionLoading(false);
+        alert("Your transport bid has been recorded! The buyer cooperative pool will select the lowest bid.");
+        window.dispatchEvent(new Event("db_update"));
+      }
+    }, 1200);
   };
 
   // Framer Motion variants
@@ -263,10 +292,49 @@ export default function LogisticsDashboard({ activeUser }) {
                           <Package size={16} style={{ color: "var(--primary)" }} />
                           <span style={{ fontSize: "0.85rem" }}>Produce: <strong>{job.quantity} {job.productName}</strong></span>
                         </div>
-                        <button className="btn btn-primary btn-sm" onClick={() => handleClaimJob(job.id)}>
-                          Accept & Claim Delivery
-                        </button>
+                        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                          {job.isGroupBuy ? (
+                            <>
+                              <button 
+                                className="btn btn-outline btn-sm" 
+                                onClick={() => {
+                                  const bid = prompt(`Enter your delivery bid for this pooled bulk route (Max ₦${job.deliveryFee.toLocaleString()}):`, job.deliveryFee - 1000);
+                                  if (bid) {
+                                    const parsedBid = parseInt(bid);
+                                    if (parsedBid > 0 && parsedBid <= job.deliveryFee) {
+                                      handlePlaceBid(job.id, parsedBid);
+                                    } else {
+                                      alert("Invalid bid amount.");
+                                    }
+                                  }
+                                }}
+                              >
+                                Place Bid (₦)
+                              </button>
+                              
+                              <button className="btn btn-primary btn-sm" onClick={() => handleClaimJob(job.id)}>
+                                Instant Claim (₦{job.deliveryFee.toLocaleString()})
+                              </button>
+                            </>
+                          ) : (
+                            <button className="btn btn-primary btn-sm" onClick={() => handleClaimJob(job.id)}>
+                              Accept & Claim Delivery
+                            </button>
+                          )}
+                        </div>
                       </div>
+
+                      {job.logisticsBids && job.logisticsBids.length > 0 && (
+                        <div style={{ padding: "8px 12px", background: "rgba(0,0,0,0.15)", borderRadius: "8px", marginTop: "10px", fontSize: "0.8rem" }}>
+                          <span style={{ color: "var(--gray-600)", fontWeight: "bold" }}>Transporter Bids Submitted:</span>
+                          {job.logisticsBids.map((bid, idx) => (
+                            <div key={idx} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", color: "white" }}>
+                              <span>{bid.driverName} {bid.driverId === activeUser.id && "(You)"}</span>
+                              <strong style={{ color: "var(--secondary-light)" }}>₦{bid.amount.toLocaleString()}</strong>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -310,6 +378,55 @@ export default function LogisticsDashboard({ activeUser }) {
                       </div>
                     </div>
 
+                    {/* Transit Route Progress Map */}
+                    <div className="transit-route-map" style={{ marginTop: "16px" }}>
+                      <div className="transit-route-track">
+                        <div className="transit-route-progress" style={{ 
+                          width: `${
+                            job.deliveryStatus === "Pending Pickup" ? "0%" :
+                            job.deliveryStatus === "Picked Up" ? "50%" :
+                            job.deliveryStatus === "In Transit" ? "75%" : "100%"
+                          }` 
+                        }} />
+                      </div>
+                      <div className="transit-route-nodes">
+                        <div className={`transit-route-node ${["Picked Up", "In Transit", "Delivered"].includes(job.deliveryStatus) ? "completed" : "active"}`}>
+                          <span className="transit-route-node-label" style={{ top: "25px" }}>{db.users.find(u => u.id === job.farmerId)?.lga || "Pickup"}</span>
+                        </div>
+                        <div className={`transit-route-node ${job.deliveryStatus === "In Transit" ? "active" : ["Delivered"].includes(job.deliveryStatus) ? "completed" : ""}`}>
+                          <span className="transit-route-node-label" style={{ top: "25px" }}>In Transit</span>
+                        </div>
+                        <div className={`transit-route-node ${job.deliveryStatus === "Delivered" ? "completed active" : ""}`}>
+                          <span className="transit-route-node-label" style={{ top: "25px" }}>{job.lga || "Destination"}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Dynamic Transit progress range slider controller */}
+                    {job.deliveryStatus === "In Transit" && (
+                      <div style={{ background: "rgba(0,0,0,0.2)", padding: "12px", borderRadius: "8px", border: "1px solid var(--glass-border)", marginBottom: "12px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "white", marginBottom: "6px" }}>
+                          <span>🛰️ Live GPS Transit Progress:</span>
+                          <strong>{job.transitPercentage || 0}% ({job.deliveryStatus})</strong>
+                        </div>
+                        <input 
+                          type="range" 
+                          min="0" 
+                          max="100" 
+                          value={job.transitPercentage || 0} 
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            const updatedDb = updateShipmentProgress(job.id, val, val === 100 ? "Out for Delivery" : "In Transit");
+                            setDb(updatedDb);
+                          }}
+                          style={{ width: "100%", height: "6px", cursor: "pointer", accentColor: "var(--primary)", background: "rgba(255,255,255,0.1)", borderRadius: "3px" }}
+                        />
+                        <small style={{ display: "block", color: "var(--gray-600)", fontSize: "0.7rem", marginTop: "4px" }}>
+                          Drag to hot-update cargo crate location along the 3D routes map in real-time.
+                        </small>
+                      </div>
+                    )}
+
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(16, 185, 129, 0.1)", border: "1px solid rgba(16, 185, 129, 0.2)", padding: "10px 16px", borderRadius: "8px", flexWrap: "wrap", gap: "10px" }}>
                       <span>Package: <strong>{job.quantity} {job.productName}</strong></span>
                       <div style={{ display: "flex", gap: "8px" }}>
@@ -323,7 +440,7 @@ export default function LogisticsDashboard({ activeUser }) {
                             Mark In Transit
                           </button>
                         )}
-                        {job.deliveryStatus === "In Transit" && (
+                        {(job.deliveryStatus === "In Transit" || job.deliveryStatus === "Out for Delivery") && (
                           <button className="btn btn-primary btn-sm" onClick={() => handleUpdateStatus(job.id, "Delivered")}>
                             Mark Delivered
                           </button>

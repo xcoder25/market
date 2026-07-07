@@ -8,7 +8,7 @@ export default function AIAssistant({ activeUser, onBuyProduct, onViewFarmer }) 
   const [messages, setMessages] = useState([
     {
       sender: "bot",
-      text: `Hello ${activeUser.name}! I am your **Ibom Agro AI Assistant**.\n\nI can search our platform database in real-time to answer questions about products, farmers, and prices in Akwa Ibom State. You can try typing or clicking these:`,
+      text: `Hello ${activeUser.name}! I am your **Ibom Agro AI Assistant**.\n\nI can search our platform database in real-time to answer questions about products, farmers, and prices in Akwa Ibom State.\n\n💡 **AI Contextual Tip for Today:**\nItu White Rice prices are currently at a 3-month low. We recommend matching with a cooperative pool to Itu LGA to purchase bulk quantity while splitting transporter haulage costs!`,
       timestamp: new Date().toISOString()
     }
   ]);
@@ -18,9 +18,10 @@ export default function AIAssistant({ activeUser, onBuyProduct, onViewFarmer }) 
 
   const suggestedPrompts = [
     "Find bulk palm oil",
-    "Where can I buy fresh mfi?",
+    "How does sterling escrow work?",
+    "Check active cooperative pools",
+    "Platform logistics rates",
     "Find cassava near me",
-    "Cheapest palm oil today",
     "Show verified fish farmers"
   ];
 
@@ -177,25 +178,42 @@ export default function AIAssistant({ activeUser, onBuyProduct, onViewFarmer }) 
             className="ai-bubble bot"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 16px" }}
+            style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 18px" }}
           >
-            <Loader3D size={32} glowColor="#10b981" />
-            <span style={{ fontSize: "0.85rem", color: "var(--gray-600)", fontWeight: "500" }}>AI is searching database...</span>
+            <div className="ai-typing-dots">
+              <div className="ai-typing-dot" />
+              <div className="ai-typing-dot" />
+              <div className="ai-typing-dot" />
+            </div>
+            <span style={{ fontSize: "0.8rem", color: "var(--gray-600)", fontWeight: "500" }}>AI is matching local databases...</span>
           </motion.div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Suggested Prompts */}
-      <div className="ai-suggested-prompts">
+      <div className="ai-suggested-prompts" style={{ padding: "8px 16px", display: "flex", flexWrap: "wrap", gap: "8px" }}>
         {suggestedPrompts.map((p, i) => (
           <button 
             key={i} 
             className="ai-prompt-chip" 
             onClick={() => handleSend(p)}
             disabled={isTyping}
+            style={{ 
+              display: "inline-flex", 
+              alignItems: "center", 
+              gap: "4px", 
+              fontSize: "0.78rem", 
+              padding: "6px 12px", 
+              borderRadius: "14px", 
+              border: "1px solid var(--glass-border)",
+              background: "rgba(16, 185, 129, 0.04)",
+              color: "var(--primary-light)",
+              cursor: "pointer",
+              transition: "all 0.2s ease"
+            }}
           >
-            {p}
+            ✦ {p}
           </button>
         ))}
       </div>

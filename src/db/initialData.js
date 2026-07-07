@@ -1073,8 +1073,10 @@ export const INITIAL_MARKET_PRICES = [
     category: "Processed Products",
     prices: { Itam: 2800, "Akpan Andem": 2900, "Ikot Ekpene": 2600, Eket: 3000 },
     history: [
+      { date: "June 23", Itam: 2700, "Akpan Andem": 2800, "Ikot Ekpene": 2500, Eket: 2900 },
       { date: "June 25", Itam: 2750, "Akpan Andem": 2850, "Ikot Ekpene": 2550, Eket: 2950 },
       { date: "June 27", Itam: 2780, "Akpan Andem": 2880, "Ikot Ekpene": 2580, Eket: 2980 },
+      { date: "June 29", Itam: 2790, "Akpan Andem": 2895, "Ikot Ekpene": 2590, Eket: 2990 },
       { date: "July 01", Itam: 2800, "Akpan Andem": 2900, "Ikot Ekpene": 2600, Eket: 3000 }
     ]
   },
@@ -1084,8 +1086,10 @@ export const INITIAL_MARKET_PRICES = [
     category: "Palm Products",
     prices: { Itam: 6500, "Akpan Andem": 6700, "Ikot Ekpene": 6200, Eket: 7000 },
     history: [
+      { date: "June 23", Itam: 6300, "Akpan Andem": 6500, "Ikot Ekpene": 6000, Eket: 6800 },
       { date: "June 25", Itam: 6400, "Akpan Andem": 6600, "Ikot Ekpene": 6100, Eket: 6900 },
       { date: "June 27", Itam: 6450, "Akpan Andem": 6650, "Ikot Ekpene": 6150, Eket: 6950 },
+      { date: "June 29", Itam: 6480, "Akpan Andem": 6680, "Ikot Ekpene": 6180, Eket: 6985 },
       { date: "July 01", Itam: 6500, "Akpan Andem": 6700, "Ikot Ekpene": 6200, Eket: 7000 }
     ]
   },
@@ -1095,8 +1099,10 @@ export const INITIAL_MARKET_PRICES = [
     category: "Fish",
     prices: { Itam: 3500, "Akpan Andem": 3600, "Ikot Ekpene": 3400, Eket: 3800 },
     history: [
+      { date: "June 23", Itam: 3650, "Akpan Andem": 3750, "Ikot Ekpene": 3550, Eket: 3950 },
       { date: "June 25", Itam: 3600, "Akpan Andem": 3700, "Ikot Ekpene": 3500, Eket: 3900 },
       { date: "June 27", Itam: 3550, "Akpan Andem": 3650, "Ikot Ekpene": 3450, Eket: 3850 },
+      { date: "June 29", Itam: 3520, "Akpan Andem": 3620, "Ikot Ekpene": 3420, Eket: 3820 },
       { date: "July 01", Itam: 3500, "Akpan Andem": 3600, "Ikot Ekpene": 3400, Eket: 3800 }
     ]
   },
@@ -1106,9 +1112,50 @@ export const INITIAL_MARKET_PRICES = [
     category: "Poultry",
     prices: { Itam: 4200, "Akpan Andem": 4300, "Ikot Ekpene": 4100, Eket: 4500 },
     history: [
+      { date: "June 23", Itam: 3900, "Akpan Andem": 4000, "Ikot Ekpene": 3850, Eket: 4200 },
       { date: "June 25", Itam: 4000, "Akpan Andem": 4100, "Ikot Ekpene": 3900, Eket: 4300 },
       { date: "June 27", Itam: 4100, "Akpan Andem": 4200, "Ikot Ekpene": 4000, Eket: 4400 },
+      { date: "June 29", Itam: 4150, "Akpan Andem": 4250, "Ikot Ekpene": 4050, Eket: 4450 },
       { date: "July 01", Itam: 4200, "Akpan Andem": 4300, "Ikot Ekpene": 4100, Eket: 4500 }
+    ]
+  },
+  {
+    id: "mp5",
+    product: "Ini Rice (per 50kg Bag)",
+    category: "Processed Products",
+    prices: { Itam: 45000, "Akpan Andem": 46000, "Ikot Ekpene": 44000, Eket: 47000 },
+    history: [
+      { date: "June 23", Itam: 43000, "Akpan Andem": 44000, "Ikot Ekpene": 42000, Eket: 45000 },
+      { date: "June 25", Itam: 43500, "Akpan Andem": 44500, "Ikot Ekpene": 42500, Eket: 45500 },
+      { date: "June 27", Itam: 44000, "Akpan Andem": 45000, "Ikot Ekpene": 43000, Eket: 46000 },
+      { date: "June 29", Itam: 44500, "Akpan Andem": 45500, "Ikot Ekpene": 43500, Eket: 46500 },
+      { date: "July 01", Itam: 45000, "Akpan Andem": 46000, "Ikot Ekpene": 44000, Eket: 47000 }
+    ]
+  },
+  {
+    id: "mp6",
+    product: "Oron Crayfish (per Bag)",
+    category: "Fish",
+    prices: { Itam: 55000, "Akpan Andem": 56000, "Ikot Ekpene": 53000, Eket: 58000 },
+    history: [
+      { date: "June 23", Itam: 52000, "Akpan Andem": 53000, "Ikot Ekpene": 50000, Eket: 55000 },
+      { date: "June 25", Itam: 53000, "Akpan Andem": 54000, "Ikot Ekpene": 51000, Eket: 56000 },
+      { date: "June 27", Itam: 54000, "Akpan Andem": 55000, "Ikot Ekpene": 52000, Eket: 57000 },
+      { date: "June 29", Itam: 54500, "Akpan Andem": 55500, "Ikot Ekpene": 52500, Eket: 57500 },
+      { date: "July 01", Itam: 55000, "Akpan Andem": 56000, "Ikot Ekpene": 53000, Eket: 58000 }
+    ]
+  },
+  {
+    id: "mp7",
+    product: "Premium Cocoa (per Bag)",
+    category: "Crops",
+    prices: { Itam: 110000, "Akpan Andem": 112000, "Ikot Ekpene": 105000, Eket: 115000 },
+    history: [
+      { date: "June 23", Itam: 105000, "Akpan Andem": 107000, "Ikot Ekpene": 100000, Eket: 110000 },
+      { date: "June 25", Itam: 107000, "Akpan Andem": 109000, "Ikot Ekpene": 102000, Eket: 112000 },
+      { date: "June 27", Itam: 108000, "Akpan Andem": 110000, "Ikot Ekpene": 103000, Eket: 113000 },
+      { date: "June 29", Itam: 109000, "Akpan Andem": 111000, "Ikot Ekpene": 104000, Eket: 114000 },
+      { date: "July 01", Itam: 110000, "Akpan Andem": 112000, "Ikot Ekpene": 105000, Eket: 115000 }
     ]
   }
 ];

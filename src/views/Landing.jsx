@@ -1,11 +1,32 @@
 import React, { useState } from "react";
-import { ArrowRight, Shield, Award, Sparkles, Navigation, Globe, Compass, ShoppingBag, TrendingUp, Info, MapPin, Users, Flame } from "lucide-react";
+import { 
+  ArrowRight, 
+  Shield, 
+  Award, 
+  Sparkles, 
+  Navigation, 
+  Globe, 
+  Compass, 
+  ShoppingBag, 
+  TrendingUp, 
+  Info, 
+  MapPin, 
+  Users, 
+  Flame,
+  ChevronDown,
+  ChevronUp,
+  Search,
+  HelpCircle
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import LgaMap3D from "../components/LgaMap3D";
 
 export default function Landing({ onExplore, onAuthClick, db }) {
   const [selectedLga, setSelectedLga] = useState("Uyo");
   const [mapMode, setMapMode] = useState("3d"); // "2d" or "3d"
+  const [priceCategory, setPriceCategory] = useState("all");
+  const [priceSearch, setPriceSearch] = useState("");
+  const [activeFaq, setActiveFaq] = useState(null);
 
   const lgas = [
     { name: "Ini", crop: "Cocoa & Upland Rice", details: "Fertile volcanic plains producing high-grade cocoa beans and sweet swamp rice.", x: 200, y: 35, color: "#10b981" },
@@ -63,6 +84,52 @@ export default function Landing({ onExplore, onAuthClick, db }) {
     };
   };
 
+  const getProductCategory = (productName) => {
+    const name = productName.toLowerCase();
+    if (name.includes("rice") || name.includes("garri") || name.includes("yam") || name.includes("cassava") || name.includes("cocoyam")) {
+      return "grains-roots";
+    }
+    if (name.includes("oil") || name.includes("crayfish") || name.includes("fish") || name.includes("seafood") || name.includes("shrimp") || name.includes("periwinkle") || name.includes("oyster") || name.includes("tilapia") || name.includes("crab")) {
+      return "seafood-oils";
+    }
+    if (name.includes("cocoa") || name.includes("raffia") || name.includes("coconut") || name.includes("kernel") || name.includes("plantation")) {
+      return "cash-crops";
+    }
+    return "others";
+  };
+
+  const drawSparkline = (item) => {
+    const seed = item.prices.Itam || 2000;
+    const points = [
+      28 - (seed % 7),
+      18 + (seed % 9),
+      32 - (seed % 5),
+      15 + (seed % 8),
+      item.prices.Itam > (item.history?.[item.history.length - 2]?.Itam || item.prices.Itam) ? 12 : 24
+    ];
+    const pointsStr = points.map((p, idx) => `${idx * 18 + 4},${p}`).join(" ");
+    const isUp = item.prices.Itam > (item.history?.[item.history.length - 2]?.Itam || item.prices.Itam);
+    const strokeColor = isUp ? "#10b981" : "#f59e0b";
+    return (
+      <svg width="80" height="35" className="sparkline-svg" style={{ overflow: "visible" }}>
+        <polyline
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          points={pointsStr}
+        />
+        <circle
+          cx="76"
+          cy={points[4]}
+          r="3"
+          fill={strokeColor}
+        />
+      </svg>
+    );
+  };
+
   const selectedLgaData = lgas.find(l => l.name === selectedLga) || lgas[3];
   const selectedStats = getLgaStats(selectedLga);
 
@@ -91,222 +158,221 @@ export default function Landing({ onExplore, onAuthClick, db }) {
   const [searchText, setSearchText] = useState("");
 
   return (
-    <div className="landing-page">
-      {/* Hero Section */}
-      <section className="landing-hero" style={{ padding: "80px 20px" }}>
-        {/* Ambient Glowing background blobs */}
-        <div style={{ position: "absolute", top: "10%", left: "15%", width: "250px", height: "250px", background: "radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%)", pointerEvents: "none" }}></div>
-        <div style={{ position: "absolute", bottom: "10%", right: "15%", width: "300px", height: "300px", background: "radial-gradient(circle, rgba(245,158,11,0.15) 0%, transparent 70%)", pointerEvents: "none" }}></div>
+    <div className="landing-page-wrapper">
+      {/* Tech grid layout backdrop */}
+      <div className="tech-grid-overlay" />
+      
+      {/* Ambient background glows */}
+      <div className="ambient-glow-blob" style={{ top: "10%", left: "10%", width: "350px", height: "350px", background: "radial-gradient(circle, rgba(16,185,129,0.18) 0%, transparent 70%)" }} />
+      <div className="ambient-glow-blob" style={{ bottom: "20%", right: "5%", width: "400px", height: "400px", background: "radial-gradient(circle, rgba(245,158,11,0.15) 0%, transparent 70%)" }} />
+      <div className="ambient-glow-blob" style={{ top: "45%", left: "30%", width: "380px", height: "380px", background: "radial-gradient(circle, rgba(14,165,233,0.12) 0%, transparent 70%)" }} />
 
-        <motion.div
-          variants={heroContainer}
-          initial="hidden"
-          animate="show"
-          style={{ width: "100%", maxWidth: "960px", zIndex: 2, display: "flex", flexDirection: "column", alignItems: "center" }}
-        >
-          {/* Akwa Ibom State Logo with Floating Spring loop */}
+      <div className="landing-page" style={{ position: "relative", zIndex: 1 }}>
+        {/* Hero Section */}
+        <section className="landing-hero" style={{ padding: "100px 20px" }}>
           <motion.div
-            variants={heroItem}
-            animate={{ y: [0, -10, 0] }}
-            transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-            style={{ marginBottom: "20px" }}
+            variants={heroContainer}
+            initial="hidden"
+            animate="show"
+            style={{ width: "100%", maxWidth: "1050px", zIndex: 2, display: "flex", flexDirection: "column", alignItems: "center" }}
           >
-            <img
-              src="/aks.png"
-              alt="Akwa Ibom State Seal"
-              style={{ width: "90px", height: "90px", objectFit: "contain", filter: "drop-shadow(0 0 12px rgba(16, 185, 129, 0.4))" }}
-            />
-          </motion.div>
-
-          {/* Slogan Pill Badge */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", marginBottom: "28px" }}>
+            {/* Akwa Ibom State Logo with Floating Spring loop */}
             <motion.div
               variants={heroItem}
-              style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "rgba(245, 158, 11, 0.08)", border: "1px solid rgba(245, 158, 11, 0.2)", borderRadius: "30px", padding: "8px 18px", fontSize: "0.9rem", color: "var(--secondary-light)", fontWeight: "bold" }}
-              whileHover={{ scale: 1.05 }}
-              animate={{ scale: [1, 1.02, 1] }}
-              transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+              animate={{ y: [0, -8, 0] }}
+              transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut" }}
+              style={{ marginBottom: "20px" }}
             >
-              <Flame size={15} style={{ color: "var(--secondary)" }} /> Akwa Ibom State • Land of Promise
+              <img
+                src="/aks.png"
+                alt="Akwa Ibom State Seal"
+                style={{ width: "95px", height: "95px", objectFit: "contain", filter: "drop-shadow(0 0 16px rgba(16, 185, 129, 0.45))" }}
+              />
             </motion.div>
 
-            <motion.div
-              variants={heroItem}
-              style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(16, 185, 129, 0.06)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "30px", padding: "6px 14px", fontSize: "0.8rem", color: "var(--primary-light)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "1px" }}
-              whileHover={{ scale: 1.05 }}
-            >
-              <Sparkles size={12} style={{ color: "var(--primary)" }} /> Powered by ARISE Agenda
-            </motion.div>
-          </div>
-
-          {/* Word-by-Word Hero Title Reveal */}
-          <h1 style={{ fontSize: "clamp(2.2rem, 6vw, 4rem)", fontWeight: 900, lineHeight: 1.1, color: "white", marginBottom: "20px", textAlign: "center" }}>
-            {titleWords.map((word, idx) => (
-              <motion.span
-                key={idx}
-                style={{ display: "inline-block", marginRight: "10px" }}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.08 + 0.3, type: "spring", stiffness: 120 }}
-              >
-                {word === "Commerce" || word === "Hub" ? (
-                  <span style={{ color: "var(--primary)", textShadow: "0 0 20px rgba(16, 185, 129, 0.3)" }}>{word}</span>
-                ) : (
-                  word
-                )}
-              </motion.span>
-            ))}
-          </h1>
-
-          <motion.p
-            variants={heroItem}
-            style={{ fontSize: "clamp(1rem, 2vw, 1.25rem)", color: "var(--gray-600)", maxWidth: "750px", margin: "0 auto 28px auto", lineHeight: 1.5, textAlign: "center" }}
-          >
-            Find products, hire services, rent property, order native delicacies, and discover local businesses across all 31 LGAs of Akwa Ibom. Secured by platform escrow, backed by trusted logistics.
-          </motion.p>
-
-          {/* Search anything in Akwa Ibom */}
-          <motion.div 
-            variants={heroItem}
-            style={{ position: "relative", width: "100%", maxWidth: "600px", margin: "0 auto 30px auto", zIndex: 10 }}
-          >
-            <input 
-              type="text" 
-              placeholder="Search anything in Akwa Ibom (e.g. palm oil, apartment, mechanic, iPhone)..." 
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              style={{ 
-                width: "100%", 
-                padding: "16px 120px 16px 20px", 
-                borderRadius: "30px", 
-                border: "1px solid var(--glass-border)", 
-                background: "rgba(255, 255, 255, 0.03)", 
-                color: "white", 
-                fontSize: "1rem",
-                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.2)",
-                backdropFilter: "blur(12px)",
-                outline: "none"
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  onExplore(searchText);
-                }
-              }}
-            />
-            <button 
-              className="btn btn-primary"
-              style={{ position: "absolute", right: "6px", top: "6px", borderRadius: "24px", padding: "10px 24px", fontSize: "0.9rem" }}
-              onClick={() => onExplore(searchText)}
-            >
-              Search
-            </button>
-          </motion.div>
-
-          <motion.div
-            variants={heroItem}
-            style={{ display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap", marginBottom: "40px" }}
-          >
-            <motion.button
-              className="btn btn-primary"
-              onClick={() => onExplore("")}
-              style={{ padding: "12px 28px" }}
-              whileHover={{ scale: 1.05, boxShadow: "0 0 15px rgba(16, 185, 129, 0.4)" }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Browse Marketplace <ArrowRight size={18} style={{ marginLeft: "4px" }} />
-            </motion.button>
-            <motion.button
-              className="btn btn-outline"
-              onClick={onAuthClick}
-              style={{ padding: "12px 28px" }}
-              whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.05)" }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Sign In / Register
-            </motion.button>
-          </motion.div>
-
-          {/* 7 Core Categories Quick Links */}
-          <motion.div
-            variants={heroItem}
-            style={{ 
-              display: "grid", 
-              gridTemplateColumns: "repeat(auto-fit, minmax(115px, 1fr))", 
-              gap: "12px", 
-              width: "100%",
-              marginTop: "10px"
-            }}
-          >
-            {[
-              { id: "listings", query: "", label: "🌾 Agro Market", color: "rgba(16, 185, 129, 0.1)" },
-              { id: "listings", query: "buy", label: "🛒 Buy & Sell", color: "rgba(14, 165, 233, 0.1)" },
-              { id: "listings", query: "property", label: "🏠 Property", color: "rgba(245, 158, 11, 0.1)" },
-              { id: "listings", query: "vehicles", label: "🚗 Vehicles", color: "rgba(239, 68, 68, 0.1)" },
-              { id: "listings", query: "food", label: "🍲 Food Market", color: "rgba(236, 72, 153, 0.1)" },
-              { id: "listings", query: "services", label: "👷 Services Hub", color: "rgba(139, 92, 246, 0.1)" },
-              { id: "directory", query: "", label: "🏢 Directory", color: "rgba(107, 114, 128, 0.1)" }
-            ].map(cat => (
+            {/* Slogan Pill Badge */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "10px", marginBottom: "28px" }}>
               <motion.div
-                key={cat.label}
-                whileHover={{ scale: 1.05, y: -4, background: "rgba(255, 255, 255, 0.08)", border: "1px solid var(--primary-light)" }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  if (cat.id === "directory") {
-                    onExplore("", "directory");
-                  } else if (cat.label.includes("Agro")) {
-                    onExplore("", "listings");
-                  } else {
-                    onExplore(cat.query, "listings");
+                variants={heroItem}
+                style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "rgba(245, 158, 11, 0.06)", border: "1px solid rgba(245, 158, 11, 0.2)", borderRadius: "30px", padding: "8px 20px", fontSize: "0.9rem", color: "var(--secondary-light)", fontWeight: "bold" }}
+                whileHover={{ scale: 1.05 }}
+                animate={{ scale: [1, 1.03, 1] }}
+                transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+              >
+                <Flame size={15} style={{ color: "var(--secondary)" }} /> Akwa Ibom State • Land of Promise
+              </motion.div>
+
+              <motion.div
+                variants={heroItem}
+                style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(16, 185, 129, 0.05)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "30px", padding: "6px 16px", fontSize: "0.78rem", color: "var(--primary-light)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "1px" }}
+                whileHover={{ scale: 1.05 }}
+              >
+                <Sparkles size={12} style={{ color: "var(--primary)" }} /> Powered by ARISE Agenda
+              </motion.div>
+            </div>
+
+            {/* Word-by-Word Hero Title Reveal */}
+            <h1 style={{ fontSize: "clamp(2.4rem, 6.5vw, 4.4rem)", fontWeight: 955, lineHeight: 1.1, color: "white", marginBottom: "24px", textAlign: "center", letterSpacing: "-0.03em" }}>
+              {titleWords.map((word, idx) => (
+                <motion.span
+                  key={idx}
+                  style={{ display: "inline-block", marginRight: "12px" }}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.07 + 0.25, type: "spring", stiffness: 130 }}
+                >
+                  {word === "Commerce" || word === "Hub" ? (
+                    <span style={{ color: "var(--primary)", textShadow: "0 0 25px rgba(16, 185, 129, 0.4)", background: "linear-gradient(135deg, #a7f3d0 0%, var(--primary-light) 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{word}</span>
+                  ) : (
+                    word
+                  )}
+                </motion.span>
+              ))}
+            </h1>
+
+            <motion.p
+              variants={heroItem}
+              style={{ fontSize: "clamp(1.05rem, 2.2vw, 1.3rem)", color: "var(--gray-600)", maxWidth: "800px", margin: "0 auto 32px auto", lineHeight: 1.6, textAlign: "center" }}
+            >
+              Find local products, hire trusted services, rent property, order native delicacies, and locate verified businesses across all 31 LGAs. Backed by cooperative escrow and local logistics networks.
+            </motion.p>
+
+            {/* Search anything in Akwa Ibom */}
+            <motion.div 
+              variants={heroItem}
+              style={{ position: "relative", width: "100%", maxWidth: "650px", margin: "0 auto 36px auto", zIndex: 10 }}
+            >
+              <div style={{ position: "absolute", left: "20px", top: "50%", transform: "translateY(-50%)", color: "var(--gray-600)", display: "flex", alignItems: "center" }}>
+                <Search size={18} />
+              </div>
+              <input 
+                type="text" 
+                placeholder="Search anything in Akwa Ibom (e.g. palm oil, apartment, mechanic, food)..." 
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                style={{ 
+                  width: "100%", 
+                  padding: "18px 130px 18px 50px", 
+                  borderRadius: "30px", 
+                  border: "1px solid var(--glass-border)", 
+                  background: "rgba(10, 20, 14, 0.6)", 
+                  color: "white", 
+                  fontSize: "1.05rem",
+                  boxShadow: "0 10px 40px rgba(0, 0, 0, 0.4)",
+                  backdropFilter: "blur(16px)",
+                  outline: "none",
+                  transition: "all 0.3s ease"
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    onExplore(searchText);
                   }
                 }}
-                style={{
-                  background: cat.color,
-                  border: "1px solid var(--glass-border)",
-                  borderRadius: "14px",
-                  padding: "16px 8px",
-                  cursor: "pointer",
-                  textAlign: "center",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "6px"
-                }}
+                onFocus={(e) => e.target.style.borderColor = "var(--primary-light)"}
+                onBlur={(e) => e.target.style.borderColor = "var(--glass-border)"}
+              />
+              <button 
+                className="btn btn-primary"
+                style={{ position: "absolute", right: "8px", top: "8px", borderRadius: "24px", padding: "10px 28px", fontSize: "0.95rem", boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)" }}
+                onClick={() => onExplore(searchText)}
               >
-                <span style={{ fontSize: "0.8rem", fontWeight: "bold", color: "white" }}>{cat.label}</span>
-              </motion.div>
-            ))}
-          </motion.div>
+                Search
+              </button>
+            </motion.div>
 
-          {/* Quick Platform Metrics */}
-          <motion.div
-            variants={heroItem}
-            style={{ display: "flex", gap: "20px", justifyContent: "center", marginTop: "50px", borderTop: "1px solid var(--glass-border)", paddingTop: "24px", flexWrap: "wrap", width: "100%" }}
-          >
-            <div style={{ flex: "1 1 120px" }}>
-              <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "var(--primary)" }}>{activeFarmersCount}+</div>
-              <div style={{ fontSize: "0.8rem", color: "var(--gray-600)" }}>Verified Sellers</div>
-            </div>
-            <div style={{ flex: "1 1 120px", borderLeft: "1px solid var(--glass-border)", paddingLeft: "10px" }}>
-              <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "var(--secondary-light)" }}>Escrow</div>
-              <div style={{ fontSize: "0.8rem", color: "var(--gray-600)" }}>Protected Purchases</div>
-            </div>
-            <div style={{ flex: "1 1 120px", borderLeft: "1px solid var(--glass-border)", paddingLeft: "10px" }}>
-              <div style={{ fontSize: "1.8rem", fontWeight: 800, color: "white" }}>7 Verticals</div>
-              <div style={{ fontSize: "0.8rem", color: "var(--gray-600)" }}>One Ecosystem</div>
-            </div>
+            <motion.div
+              variants={heroItem}
+              style={{ display: "flex", gap: "16px", justifyContent: "center", flexWrap: "wrap", marginBottom: "48px" }}
+            >
+              <motion.button
+                className="btn btn-primary"
+                onClick={() => onExplore("")}
+                style={{ padding: "14px 32px", fontSize: "0.95rem" }}
+                whileHover={{ scale: 1.05, boxShadow: "0 0 20px rgba(16, 185, 129, 0.5)" }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Browse Marketplace <ArrowRight size={18} style={{ marginLeft: "6px" }} />
+              </motion.button>
+              <motion.button
+                className="btn btn-outline"
+                onClick={onAuthClick}
+                style={{ padding: "14px 32px", fontSize: "0.95rem" }}
+                whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.06)", borderColor: "white" }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Sign In / Register
+              </motion.button>
+            </motion.div>
+
+            {/* Redesigned 7 Categories Grid */}
+            <motion.div
+              variants={heroItem}
+              className="category-grid-enhanced"
+            >
+              {[
+                { id: "listings", query: "", label: "🌾 Agro Market", desc: "Crops & seeds", color: "rgba(16, 185, 129, 0.12)" },
+                { id: "listings", query: "buy", label: "🛒 Buy & Sell", desc: "Retail & wholesale", color: "rgba(14, 165, 233, 0.12)" },
+                { id: "listings", query: "property", label: "🏠 Property", desc: "Rentals & lands", color: "rgba(245, 158, 11, 0.12)" },
+                { id: "listings", query: "vehicles", label: "🚗 Vehicles", desc: "Auto & rentals", color: "rgba(239, 68, 68, 0.12)" },
+                { id: "listings", query: "food", label: "🍲 Food Market", desc: "Native cuisines", color: "rgba(236, 72, 153, 0.12)" },
+                { id: "listings", query: "services", label: "👷 Services Hub", desc: "Hire local experts", color: "rgba(139, 92, 246, 0.12)" },
+                { id: "directory", query: "", label: "🏢 Directory", desc: "Find businesses", color: "rgba(107, 114, 128, 0.12)" }
+              ].map(cat => (
+                <motion.div
+                  key={cat.label}
+                  className="category-card-enhanced"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    if (cat.id === "directory") {
+                      onExplore("", "directory");
+                    } else if (cat.label.includes("Agro")) {
+                      onExplore("", "listings");
+                    } else {
+                      onExplore(cat.query, "listings");
+                    }
+                  }}
+                  style={{
+                    background: cat.color
+                  }}
+                >
+                  <span className="category-card-icon">{cat.label.split(" ")[0]}</span>
+                  <h4 className="category-card-title">{cat.label.split(" ").slice(1).join(" ")}</h4>
+                  <p className="category-card-desc">{cat.desc}</p>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            {/* Quick Platform Metrics */}
+            <motion.div
+              variants={heroItem}
+              style={{ display: "flex", gap: "20px", justifyContent: "center", marginTop: "56px", borderTop: "1px solid var(--glass-border)", paddingTop: "28px", flexWrap: "wrap", width: "100%" }}
+            >
+              <div style={{ flex: "1 1 150px" }}>
+                <div style={{ fontSize: "2rem", fontWeight: 800, color: "var(--primary)", textShadow: "0 0 10px rgba(16,185,129,0.2)" }}>{activeFarmersCount}+</div>
+                <div style={{ fontSize: "0.85rem", color: "var(--gray-600)" }}>Verified Sellers</div>
+              </div>
+              <div style={{ flex: "1 1 150px", borderLeft: "1px solid var(--glass-border)", paddingLeft: "15px" }}>
+                <div style={{ fontSize: "2rem", fontWeight: 800, color: "var(--secondary-light)", textShadow: "0 0 10px rgba(245,158,11,0.2)" }}>Coop Escrow</div>
+                <div style={{ fontSize: "0.85rem", color: "var(--gray-600)" }}>Protected Payments</div>
+              </div>
+              <div style={{ flex: "1 1 150px", borderLeft: "1px solid var(--glass-border)", paddingLeft: "15px" }}>
+                <div style={{ fontSize: "2rem", fontWeight: 800, color: "white" }}>7 Verticals</div>
+                <div style={{ fontSize: "0.85rem", color: "var(--gray-600)" }}>Unified State Economy</div>
+              </div>
+            </motion.div>
           </motion.div>
-        </motion.div>
-      </section>
+        </section>
 
       {/* Signature Produce Showcase Section */}
       <section className="landing-section">
         <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
           <div className="section-header">
-            <h2 style={{ fontSize: "2rem", color: "white", marginBottom: "12px" }}>Akwa Ibom's Harvest Treasures</h2>
-            <p style={{ color: "var(--gray-600)", maxWidth: "600px", margin: "0 auto" }}>
-              Discover the premium cash crops and marine seafood that make our state's soil and waters fertile and legendary.
-            </p>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(16, 185, 129, 0.12)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "30px", padding: "4px 12px", marginBottom: "16px", fontSize: "0.8rem", color: "var(--primary-light)" }}>
+              <Award size={14} /> Agricultural Gold
+            </div>
+            <h2>Akwa Ibom's Harvest Treasures</h2>
+            <p>Discover the premium cash crops and marine seafood that make our state's soil and waters fertile and legendary.</p>
           </div>
 
           <motion.div
@@ -326,13 +392,21 @@ export default function Landing({ onExplore, onAuthClick, db }) {
                 className="product-card"
                 whileHover={{ y: -8, transition: { duration: 0.2 } }}
               >
-                <div className="product-img-wrapper" style={{ height: "180px" }}>
+                <div className="product-img-wrapper" style={{ height: "190px" }}>
                   <img src={p.image} alt={p.name} className="product-img" />
                   <span className="product-organic-badge" style={{ backgroundColor: "var(--secondary)" }}>{p.location}</span>
                 </div>
                 <div style={{ padding: "20px", display: "flex", flexDirection: "column", flex: 1 }}>
-                  <h3 style={{ fontSize: "1.2rem", color: "white", marginBottom: "8px" }}>{p.name}</h3>
+                  <h3 style={{ fontSize: "1.15rem", color: "white", marginBottom: "8px" }}>{p.name}</h3>
                   <p style={{ fontSize: "0.85rem", color: "var(--gray-600)", lineHeight: 1.4, flex: 1 }}>{p.description}</p>
+                </div>
+                <div className="product-card-footer">
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                    <Shield size={12} style={{ color: "var(--primary)" }} /> Escrow Protected
+                  </span>
+                  <span style={{ color: "var(--primary-light)", fontWeight: "bold", cursor: "pointer" }} onClick={() => onExplore(p.name)}>
+                    View Listings
+                  </span>
                 </div>
               </motion.div>
             ))}
@@ -351,31 +425,31 @@ export default function Landing({ onExplore, onAuthClick, db }) {
             <p>Our platform connects buyers, sellers, and logistics partners in three simple steps.</p>
           </div>
 
-          <div className="how-it-works-grid">
-            <div className="step-card">
+          <div className="how-it-works-grid-enhanced">
+            <div className="step-card-enhanced">
               <span className="step-number">01</span>
-              <div className="step-icon-wrapper">
+              <div className="step-icon-wrapper" style={{ width: "60px", height: "60px", borderRadius: "50%", background: "rgba(16, 185, 129, 0.1)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "20px", border: "1px solid rgba(16, 185, 129, 0.2)" }}>
                 <Award size={24} />
               </div>
               <h3>Sellers List Storefronts</h3>
               <p>Verified businesses, farmers, property agents, and service professionals create digital storefronts, list inventory, and configure business details.</p>
             </div>
 
-            <div className="step-card">
+            <div className="step-card-enhanced">
               <span className="step-number">02</span>
-              <div className="step-icon-wrapper">
+              <div className="step-icon-wrapper" style={{ width: "60px", height: "60px", borderRadius: "50%", background: "rgba(245, 158, 11, 0.1)", color: "var(--secondary)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "20px", border: "1px solid rgba(245, 158, 11, 0.2)" }}>
                 <ShoppingBag size={24} />
               </div>
               <h3>Buyers Order Securely</h3>
               <p>Customers place orders or book services using Escrow protection. Funds are secured safely until goods are delivered or jobs are completed.</p>
             </div>
 
-            <div className="step-card">
+            <div className="step-card-enhanced">
               <span className="step-number">03</span>
-              <div className="step-icon-wrapper">
+              <div className="step-icon-wrapper" style={{ width: "60px", height: "60px", borderRadius: "50%", background: "rgba(16, 185, 129, 0.1)", color: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "20px", border: "1px solid rgba(16, 185, 129, 0.2)" }}>
                 <Navigation size={24} />
               </div>
-              <h3>Logistics & Delivery Matches</h3>
+              <h3>Logistics & Matching</h3>
               <p>Verified logistics carriers claim deliveries, matching orders with vehicle types (bikes, kekes, or heavy trucks) to ensure prompt delivery.</p>
             </div>
           </div>
@@ -389,47 +463,89 @@ export default function Landing({ onExplore, onAuthClick, db }) {
             <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(16, 185, 129, 0.12)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "30px", padding: "4px 12px", marginBottom: "16px", fontSize: "0.8rem", color: "var(--primary-light)" }}>
               <TrendingUp size={14} /> Price Indexing
             </div>
-            <h2>Live Market Price Trends</h2>
+            <h2>Live Market Price Index</h2>
             <p>Real-time commodity price tracking across major markets in Akwa Ibom State.</p>
           </div>
 
-          <div className="market-trends-container">
-            <table className="market-trends-table">
-              <thead>
-                <tr>
-                  <th>Commodity</th>
-                  <th>Itam Market</th>
-                  <th>Akpan Andem</th>
-                  <th>Ikot Ekpene</th>
-                  <th>Eket Market</th>
-                  <th>Trend</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(db?.marketPrices || []).map((item) => {
-                  const latestPrice = item.prices.Itam;
-                  const prevPrice = item.history && item.history.length > 1 ? item.history[item.history.length - 2].Itam : latestPrice;
-                  const isUp = latestPrice > prevPrice;
+          <div className="price-index-terminal">
+            <div className="price-terminal-header">
+              <div className="price-filter-tabs">
+                {[
+                  { id: "all", label: "All Commodities" },
+                  { id: "grains-roots", label: "🌾 Grains & Roots" },
+                  { id: "seafood-oils", label: "🍲 Seafood & Oils" },
+                  { id: "cash-crops", label: "📦 Cash Crops" }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    className={`price-filter-btn ${priceCategory === tab.id ? "active" : ""}`}
+                    onClick={() => setPriceCategory(tab.id)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
 
-                  return (
-                    <tr key={item.id}>
-                      <td style={{ fontWeight: "bold", color: "white" }}>{item.product}</td>
-                      <td>₦{item.prices.Itam.toLocaleString()}</td>
-                      <td>₦{item.prices["Akpan Andem"]?.toLocaleString() || item.prices.Itam.toLocaleString()}</td>
-                      <td>₦{item.prices["Ikot Ekpene"]?.toLocaleString() || item.prices.Itam.toLocaleString()}</td>
-                      <td>₦{item.prices.Eket?.toLocaleString() || item.prices.Itam.toLocaleString()}</td>
-                      <td>
-                        {isUp ? (
-                          <span className="trend-indicator up">▲ Rising</span>
-                        ) : (
-                          <span className="trend-indicator stable">● Stable</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+              <div className="price-search-wrapper">
+                <span className="price-search-icon"><Search size={14} /></span>
+                <input
+                  type="text"
+                  placeholder="Search commodity..."
+                  className="price-search-input"
+                  value={priceSearch}
+                  onChange={(e) => setPriceSearch(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="market-trends-container">
+              <table className="market-trends-table">
+                <thead>
+                  <tr>
+                    <th>Commodity</th>
+                    <th>Itam Market</th>
+                    <th>Akpan Andem</th>
+                    <th>Ikot Ekpene</th>
+                    <th>Eket Market</th>
+                    <th style={{ textAlign: "center" }}>7-Day Trend</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(db?.marketPrices || [])
+                    .filter(item => {
+                      if (priceCategory !== "all" && getProductCategory(item.product) !== priceCategory) return false;
+                      if (priceSearch.trim() !== "" && !item.product.toLowerCase().includes(priceSearch.toLowerCase())) return false;
+                      return true;
+                    })
+                    .map((item) => {
+                      const latestPrice = item.prices.Itam;
+                      const prevPrice = item.history && item.history.length > 1 ? item.history[item.history.length - 2].Itam : latestPrice;
+                      const isUp = latestPrice > prevPrice;
+
+                      return (
+                        <tr key={item.id}>
+                          <td style={{ fontWeight: "bold", color: "white" }}>{item.product}</td>
+                          <td>₦{item.prices.Itam.toLocaleString()}</td>
+                          <td>₦{item.prices["Akpan Andem"]?.toLocaleString() || item.prices.Itam.toLocaleString()}</td>
+                          <td>₦{item.prices["Ikot Ekpene"]?.toLocaleString() || item.prices.Itam.toLocaleString()}</td>
+                          <td>₦{item.prices.Eket?.toLocaleString() || item.prices.Itam.toLocaleString()}</td>
+                          <td style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "8px" }}>
+                            {drawSparkline(item)}
+                          </td>
+                          <td>
+                            {isUp ? (
+                              <span className="trend-indicator up">▲ Rising</span>
+                            ) : (
+                              <span className="trend-indicator stable">● Stable</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </section>
@@ -454,35 +570,47 @@ export default function Landing({ onExplore, onAuthClick, db }) {
                 Akwa Ibom consists of 31 Local Government Areas, each with highly distinct ecological specializations. Click an LGA on the interactive map to load live stats.
               </p>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {lgas.map((item) => (
-                  <motion.div
-                    key={item.name}
-                    onClick={() => setSelectedLga(item.name)}
-                    style={{
-                      display: "flex",
-                      gap: "12px",
-                      padding: "14px",
-                      border: selectedLga === item.name ? "1px solid var(--primary)" : "1px solid var(--glass-border)",
-                      background: selectedLga === item.name ? "rgba(16, 185, 129, 0.12)" : "var(--glass-bg)",
-                      borderRadius: "12px",
-                      cursor: "pointer",
-                      transition: "all 0.2s"
-                    }}
-                    whileHover={{ scale: 1.02 }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", justifyCentering: "center", width: "40px", height: "40px", borderRadius: "50%", background: selectedLga === item.name ? "var(--primary)" : "rgba(16, 185, 129, 0.15)", color: selectedLga === item.name ? "var(--dark)" : "var(--primary)", fontWeight: "bold", flexShrink: 0, justifyContent: "center" }}>
-                      {item.name[0]}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "4px" }}>
-                        <strong style={{ color: "white", fontSize: "0.95rem" }}>{item.name} LGA</strong>
-                        <span style={{ color: "var(--secondary-light)", fontSize: "0.8rem", fontWeight: "bold" }}>{item.crop}</span>
+              <div className="regional-lga-list">
+                {lgas.map((item) => {
+                  const stats = getLgaStats(item.name);
+                  const activityPct = Math.min((stats.products * 15) + (stats.farmers * 10) + 10, 100);
+                  return (
+                    <motion.div
+                      key={item.name}
+                      onClick={() => setSelectedLga(item.name)}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        padding: "14px 18px",
+                        border: selectedLga === item.name ? "1px solid var(--primary)" : "1px solid var(--glass-border)",
+                        background: selectedLga === item.name ? "rgba(16, 185, 129, 0.12)" : "rgba(255,255,255,0.015)",
+                        borderRadius: "14px",
+                        cursor: "pointer",
+                        transition: "all 0.2s"
+                      }}
+                      whileHover={{ scale: 1.015, background: "rgba(255,255,255,0.03)" }}
+                    >
+                      <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: "36px", height: "36px", borderRadius: "50%", background: selectedLga === item.name ? "var(--primary)" : "rgba(16, 185, 129, 0.1)", color: selectedLga === item.name ? "var(--dark)" : "var(--primary)", fontWeight: "bold", flexShrink: 0 }}>
+                          {item.name[0]}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "4px" }}>
+                            <strong style={{ color: "white", fontSize: "0.95rem" }}>{item.name} LGA</strong>
+                            <span style={{ color: "var(--secondary-light)", fontSize: "0.8rem", fontWeight: "bold" }}>{item.crop}</span>
+                          </div>
+                        </div>
                       </div>
-                      <p style={{ fontSize: "0.8rem", color: "var(--gray-600)", marginTop: "4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.details}</p>
-                    </div>
-                  </motion.div>
-                ))}
+                      <div className="lga-activity-bar-container">
+                        <div className="lga-activity-bar-fill" style={{ width: `${activityPct}%` }} />
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", color: "var(--gray-600)", marginTop: "6px" }}>
+                        <span>Market Activity</span>
+                        <span style={{ color: selectedLga === item.name ? "var(--primary-light)" : "var(--gray-600)" }}>{activityPct}% Active</span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
             </motion.div>
 
@@ -634,44 +762,54 @@ export default function Landing({ onExplore, onAuthClick, db }) {
               <AnimatePresence mode="wait">
                 <motion.div
                   key={selectedLga}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="card"
-                  style={{ padding: "24px", border: "1px solid var(--primary)", background: "rgba(10, 25, 15, 0.7)" }}
+                  exit={{ opacity: 0, y: -12 }}
+                  className="lga-insight-card"
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <MapPin size={18} style={{ color: "var(--primary)" }} />
-                      <h4 style={{ color: "white", fontSize: "1.2rem" }}>{selectedLgaData.name} Region Status</h4>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <MapPin size={20} style={{ color: "var(--primary)" }} />
+                      <h4 style={{ color: "white", fontSize: "1.3rem", margin: 0 }}>{selectedLgaData.name} Region Insights</h4>
                     </div>
-                    <span style={{ fontSize: "0.75rem", background: "rgba(16,185,129,0.12)", color: "var(--primary)", padding: "3px 8px", borderRadius: "10px", fontWeight: "bold" }}>Realtime Sync</span>
+                    <span style={{ fontSize: "0.75rem", background: "rgba(16,185,129,0.15)", border: "1px solid rgba(16,185,129,0.3)", color: "var(--primary-light)", padding: "4px 10px", borderRadius: "20px", fontWeight: "bold" }}>Realtime Sync</span>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
-                    <div style={{ background: "rgba(255,255,255,0.02)", padding: "12px", borderRadius: "8px", border: "1px solid var(--glass-border)" }}>
-                      <span style={{ fontSize: "0.75rem", color: "var(--gray-600)", display: "flex", alignItems: "center", gap: "4px" }}><Users size={12} /> Active Farmers</span>
-                      <strong style={{ fontSize: "1.4rem", color: "white", display: "block", marginTop: "4px" }}>{selectedStats.farmers}</strong>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "20px" }}>
+                    <div className="lga-insight-metric">
+                      <span style={{ fontSize: "0.78rem", color: "var(--gray-600)", display: "flex", alignItems: "center", gap: "6px" }}><Users size={14} /> Active Sellers</span>
+                      <strong style={{ fontSize: "1.6rem", color: "white", display: "block", marginTop: "4px" }}>{selectedStats.farmers}</strong>
                     </div>
-                    <div style={{ background: "rgba(255,255,255,0.02)", padding: "12px", borderRadius: "8px", border: "1px solid var(--glass-border)" }}>
-                      <span style={{ fontSize: "0.75rem", color: "var(--gray-600)", display: "flex", alignItems: "center", gap: "4px" }}><ShoppingBag size={12} /> Live Products</span>
-                      <strong style={{ fontSize: "1.4rem", color: "white", display: "block", marginTop: "4px" }}>{selectedStats.products}</strong>
+                    <div className="lga-insight-metric">
+                      <span style={{ fontSize: "0.78rem", color: "var(--gray-600)", display: "flex", alignItems: "center", gap: "6px" }}><ShoppingBag size={14} /> Local Listings</span>
+                      <strong style={{ fontSize: "1.6rem", color: "white", display: "block", marginTop: "4px" }}>{selectedStats.products}</strong>
                     </div>
                   </div>
 
-                  <h5 style={{ fontSize: "0.85rem", color: "var(--gray-600)", marginBottom: "8px", fontWeight: "bold" }}>FEATURED COMMODITIES:</h5>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", background: "rgba(0,0,0,0.25)", padding: "16px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.03)", marginBottom: "20px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
+                      <span style={{ color: "var(--gray-600)" }}>Primary Specialization:</span>
+                      <strong style={{ color: "var(--secondary-light)" }}>{selectedLgaData.crop}</strong>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "4px", fontSize: "0.85rem", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "10px" }}>
+                      <span style={{ color: "var(--gray-600)" }}>Agricultural Detail:</span>
+                      <p style={{ color: "var(--white)", margin: 0, fontSize: "0.8rem", lineHeight: 1.4 }}>{selectedLgaData.details}</p>
+                    </div>
+                  </div>
+
+                  <h5 style={{ fontSize: "0.82rem", color: "var(--gray-600)", marginBottom: "10px", fontWeight: "bold", letterSpacing: "0.03em" }}>FEATURED COMMODITIES:</h5>
                   {selectedStats.listings.length > 0 ? (
-                    <ul style={{ listStyleType: "none", paddingLeft: 0, margin: 0, display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                    <ul style={{ listStyleType: "none", paddingLeft: 0, margin: 0, display: "flex", gap: "8px", flexWrap: "wrap" }}>
                       {selectedStats.listings.map((l, i) => (
-                        <li key={i} style={{ fontSize: "0.8rem", padding: "4px 10px", borderRadius: "12px", background: "rgba(16, 185, 129, 0.1)", color: "var(--primary-light)", border: "1px solid rgba(16, 185, 129, 0.2)" }}>{l}</li>
+                        <li key={i} style={{ fontSize: "0.8rem", padding: "6px 12px", borderRadius: "20px", background: "rgba(16, 185, 129, 0.12)", color: "var(--primary-light)", border: "1px solid rgba(16, 185, 129, 0.25)" }}>{l}</li>
                       ))}
                     </ul>
                   ) : (
-                    <p style={{ fontSize: "0.8rem", color: "var(--gray-600)", fontStyle: "italic" }}>No active listings currently from this region. Be the first to register!</p>
+                    <p style={{ fontSize: "0.8rem", color: "var(--gray-600)", fontStyle: "italic", margin: 0 }}>No active listings currently from this region. Be the first to register!</p>
                   )}
 
-                  <button className="btn btn-primary" onClick={onExplore} style={{ width: "100%", marginTop: "20px" }}>
-                    Explore Marketplace Listings
+                  <button className="btn btn-primary" onClick={() => onExplore("")} style={{ width: "100%", marginTop: "24px", padding: "12px 20px" }}>
+                    Explore {selectedLga} LGA Listings
                   </button>
                 </motion.div>
               </AnimatePresence>
@@ -679,6 +817,97 @@ export default function Landing({ onExplore, onAuthClick, db }) {
           </div>
         </div>
       </section>
+
+      {/* FAQs Accordion */}
+      <section className="landing-section">
+        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+          <div className="section-header">
+            <div style={{ display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(16, 185, 129, 0.12)", border: "1px solid rgba(16, 185, 129, 0.2)", borderRadius: "30px", padding: "4px 12px", marginBottom: "16px", fontSize: "0.8rem", color: "var(--primary-light)" }}>
+              <HelpCircle size={14} /> Knowledge Hub
+            </div>
+            <h2>Frequently Asked Questions</h2>
+            <p>Find answers to common questions about trading, escrow, and logistics on IbomOne.</p>
+          </div>
+
+          <div className="faq-section">
+            {[
+              {
+                q: "How does the Sterling Cooperative Escrow protect my money?",
+                a: "When you place an order, your money is held securely in the Sterling Cooperative Escrow account. The seller is notified to dispatch the items. Once you receive the products and confirm they meet your expectations, the funds are released to the seller. In case of dispute, our admin team mediates to guarantee fair resolutions."
+              },
+              {
+                q: "I am a local farmer. How do I get verified on IbomOne?",
+                a: "Registration is simple! Click 'Sign In / Register' in the hero header, create an account, and select the 'Farmer' role. You will be prompted to enter your LGA, farm location, and primary crop focus. Once submitted, our area representatives will conduct a swift verification call to list your crops."
+              },
+              {
+                q: "How do logistics matching work for transporters?",
+                a: "Transporters registered as Logistics Partners can view a live job dashboard. When a buyer completes a payment, logistics carriers in the area receive matching delivery alerts based on vehicle type (motorcycle, keke, or truck). Transporters accept the job, collect the products from the farm, and deliver them directly to the buyer's destination."
+              },
+              {
+                q: "What types of items can be sold on this platform?",
+                a: "IbomOne supports 7 distinct verticals: agricultural cash crops and fresh vegetables (Agro Market), consumer goods (Buy & Sell), residential and commercial spaces (Property), vehicle rentals (Vehicles), local delicacies (Food Market), specialized technical services (Services Hub), and a directory of verified local businesses (Directory)."
+              }
+            ].map((faq, idx) => (
+              <div key={idx} className={`faq-item ${activeFaq === idx ? "active" : ""}`}>
+                <button
+                  className="faq-question-btn"
+                  onClick={() => setActiveFaq(activeFaq === idx ? null : idx)}
+                >
+                  <span>{faq.q}</span>
+                  {activeFaq === idx ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                </button>
+                {activeFaq === idx && (
+                  <div className="faq-answer-content">
+                    <p>{faq.a}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Action CTA Section */}
+      <section className="landing-section" style={{ border: "none", background: "none" }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+          <div className="action-cta-section">
+            <div className="action-cta-card seller-cta">
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "2rem" }}>🌾</span>
+                <h3 style={{ fontSize: "1.4rem", color: "white", margin: 0 }}>Register as a Seller / Farmer</h3>
+              </div>
+              <p style={{ fontSize: "0.9rem", color: "var(--gray-600)", lineHeight: 1.5, margin: 0 }}>
+                Gain access to thousands of buyers across Akwa Ibom State. Benefit from cooperative pricing, escrow protection, and direct access to trusted logistics carriers.
+              </p>
+              <button 
+                className="btn btn-primary" 
+                onClick={onAuthClick}
+                style={{ width: "fit-content", padding: "10px 24px", marginTop: "10px" }}
+              >
+                Create Storefront
+              </button>
+            </div>
+
+            <div className="action-cta-card buyer-cta">
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "2rem" }}>🛒</span>
+                <h3 style={{ fontSize: "1.4rem", color: "white", margin: 0 }}>Start Ordering Today</h3>
+              </div>
+              <p style={{ fontSize: "0.9rem", color: "var(--gray-600)", lineHeight: 1.5, margin: 0 }}>
+                Find the freshest agricultural produce, hire reliable service experts, rent properties, and order local foods directly. Secured by Sterling Cooperative Escrow.
+              </p>
+              <button 
+                className="btn btn-primary" 
+                onClick={() => onExplore("")}
+                style={{ width: "fit-content", padding: "10px 24px", marginTop: "10px", background: "var(--secondary)", borderColor: "var(--secondary)", color: "black" }}
+              >
+                Browse Marketplace
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
-  );
+  </div>
+);
 }

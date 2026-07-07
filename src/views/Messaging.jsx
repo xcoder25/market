@@ -221,7 +221,25 @@ export default function Messaging({ activeUser, preselectedRecipientId, onCloseP
                   transition={{ duration: 0.2 }}
                   className={`chat-bubble ${msg.senderId === activeUser.id ? "sent" : "received"}`}
                 >
-                  <div>{msg.text}</div>
+                  <div>
+                    {msg.text.startsWith("📍 Shared Location:") ? (
+                      <div 
+                        className="chat-gps-badge"
+                        style={{ marginTop: 0 }}
+                        onClick={() => {
+                          alert(`Directions: Map route loaded for ${msg.text.split("Location:")[1].trim()}`);
+                        }}
+                      >
+                        <MapPin size={16} style={{ color: "#38bdf8", flexShrink: 0 }} />
+                        <div>
+                          <strong style={{ display: "block", fontSize: "0.8rem", color: "#38bdf8", textAlign: "left" }}>Location Shared</strong>
+                          <span style={{ fontSize: "0.68rem", opacity: 0.8, color: "white", display: "block", textAlign: "left" }}>{msg.text.replace("📍 Shared Location: ", "")}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      msg.text
+                    )}
+                  </div>
                   {msg.image && (
                     <img 
                       src={msg.image} 

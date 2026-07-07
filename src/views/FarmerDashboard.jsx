@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { DollarSign, ShoppingBag, PlusCircle, Check, X, ShieldAlert, Sparkles, TrendingUp, BarChart2, Star, Calendar, RefreshCw, Edit, Shield, Globe } from "lucide-react";
+import { DollarSign, ShoppingBag, PlusCircle, Check, X, ShieldAlert, Sparkles, TrendingUp, BarChart2, Star, Calendar, RefreshCw, Edit, Shield, Globe, Users, MapPin } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   getDB, 
@@ -21,7 +21,21 @@ export default function FarmerDashboard({ activeUser, onSwitchView }) {
   const [activeTab, setActiveTab] = useState("overview"); // overview, orders, products, storefront, analytics, harvest
   const [showAddForm, setShowAddForm] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [hoveredBar, setHoveredBar] = useState(null);
   const [loadingMessage, setLoadingMessage] = useState("");
+  
+  const getSuggestedPriceRange = () => {
+    if (!prodName) return null;
+    const match = db.marketPrices.find(mp => 
+      prodName.toLowerCase().includes(mp.product.toLowerCase()) || 
+      mp.product.toLowerCase().includes(prodName.toLowerCase())
+    );
+    if (!match) return null;
+    const prices = Object.values(match.prices);
+    const min = Math.min(...prices);
+    const max = Math.max(...prices);
+    return { product: match.product, min, max };
+  };
   
   // Paystack checkout integration states
   const [showPaystack, setShowPaystack] = useState(false);
@@ -461,67 +475,225 @@ export default function FarmerDashboard({ activeUser, onSwitchView }) {
             {myOrders.length === 0 ? (
               <p style={{ textAlign: "center", padding: "20px", color: "var(--gray-600)" }}>You have not received any orders yet.</p>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                {myOrders.map(order => (
-                  <div key={order.id} className={`dashboard-order-card ${["Paid", "Assigned", "Picked Up", "En Route"].includes(order.status) ? "pending" : ["Completed", "Reviewed"].includes(order.status) ? "completed" : order.status === "Rejected" || order.status === "Cancelled" ? "cancelled" : ""}`}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--glass-border)", paddingBottom: "12px", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
-                      <div>
-                        <strong style={{ color: "white" }}>Order ID: {order.id}</strong>
-                        <span style={{ fontSize: "0.85rem", color: "var(--gray-600)", marginLeft: "12px" }}>Placed on: {order.date}</span>
-                      </div>
-                      <span className={`badge-status ${order.status.toLowerCase().replace(" ", "-")}`}>
-                        {order.status}
-                      </span>
-                    </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                {/* 1. Group Buy Pooled Orders */}
+                {myOrders.some(o => o.isGroupBuy) && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                    <h4 style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--secondary-light)", margin: "10px 0 6px 0", fontSize: "1.05rem" }}>
+                      <Users size={16} /> Cooperative Group-Buy Pools ({myOrders.filter(o => o.isGroupBuy).length} Sub-Orders)
+                    </h4>
+                    {(() => {
+                      const pooledOrders = myOrders.filter(o => o.isGroupBuy);
+                      const poolsMap = {};
+                      pooledOrders.forEach(order => {
+                        if (!poolsMap[order.poolId]) poolsMap[order.poolId] = [];
+                        poolsMap[order.poolId].push(order);
+                      });
 
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
-                      <div>
-                        <small style={{ color: "var(--gray-600)" }}>Buyer Contact</small>
-                        <div style={{ fontWeight: "700", color: "white", marginTop: "2px" }}>{order.buyerName}</div>
-                        <div style={{ fontSize: "0.85rem", color: "var(--gray-600)" }}>📞 {order.buyerPhone}</div>
-                      </div>
-                      <div>
-                        <small style={{ color: "var(--gray-600)" }}>Produce Details</small>
-                        <div style={{ fontWeight: "700", color: "white", marginTop: "2px" }}>{order.productName}</div>
-                        <div style={{ fontSize: "0.85rem", color: "var(--gray-600)" }}>Qty: {order.quantity} | Total: <strong style={{ color: "var(--secondary)" }}>₦{order.totalAmount.toLocaleString()}</strong></div>
-                      </div>
-                      <div>
-                        <small style={{ color: "var(--gray-600)" }}>Delivery Method</small>
-                        <div style={{ fontSize: "0.85rem", color: "var(--gray-800)", marginTop: "2px" }}>Logistics: {order.deliveryPartnerName || "Pending Carrier Claim"}</div>
-                        <div style={{ fontSize: "0.85rem", color: "var(--gray-600)" }}>Status: <strong style={{ color: "var(--primary)" }}>{order.deliveryStatus}</strong></div>
-                      </div>
-                    </div>
+                      return Object.entries(poolsMap).map(([poolId, orders]) => {
+                        const poolInfo = db.groupBuys?.find(p => p.id === poolId) || { id: poolId, targetQuantity: 50, currentQuantity: 50, lga: "Uyo" };
+                        const sampleOrder = orders[0];
+                        const totalQty = orders.reduce((sum, o) => sum + o.quantity, 0);
+                        const totalAmt = orders.reduce((sum, o) => sum + o.totalAmount, 0);
 
-                    {/* Operational actions for farmer */}
-                    {order.status === "Requested" && (
-                      <div style={{ display: "flex", gap: "10px", marginTop: "20px", justifyContent: "flex-end" }}>
-                        <button className="btn btn-outline btn-sm" onClick={() => handleRejectOrder(order.id)}>
-                          <X size={14} /> Reject
-                        </button>
-                        <button className="btn btn-primary btn-sm" onClick={() => handleAcceptOrder(order.id)}>
-                          <Check size={14} /> Accept & Invoice
-                        </button>
-                      </div>
-                    )}
+                        return (
+                          <div key={poolId} className="card" style={{ borderLeft: "4px solid var(--secondary)", padding: "16px", background: "rgba(245,158,11,0.01)" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--glass-border)", paddingBottom: "12px", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
+                              <div>
+                                <span style={{ fontSize: "0.7rem", background: "rgba(245,158,11,0.15)", color: "var(--secondary-light)", padding: "2px 8px", borderRadius: "8px", fontWeight: "bold" }}>
+                                  LGA Pool Target Reached
+                                </span>
+                                <h4 style={{ margin: "4px 0 0 0", color: "white" }}>{sampleOrder.productName} Pool</h4>
+                                <small style={{ color: "var(--gray-600)" }}>LGA Destination: {poolInfo.lga} LGA | Pool ID: #{poolId}</small>
+                              </div>
+                              <div style={{ textAlign: "right" }}>
+                                <div style={{ fontSize: "1.1rem", fontWeight: "bold", color: "white" }}>₦{totalAmt.toLocaleString()}</div>
+                                <small style={{ color: "var(--gray-600)" }}>{totalQty} Units (Pooled)</small>
+                              </div>
+                            </div>
 
-                    {order.status === "Paid" && (
-                      <div style={{ display: "flex", gap: "10px", marginTop: "20px", justifyContent: "flex-end" }}>
-                        <button className="btn btn-secondary btn-sm" onClick={() => handleConfirmPayment(order.id)}>
-                          <Check size={14} style={{ marginRight: "4px" }} /> Mark Ready & Dispatch Logistics
-                        </button>
-                      </div>
-                    )}
-                    
-                    {order.review && (
-                      <div style={{ marginTop: "20px", borderTop: "1px solid var(--glass-border)", paddingTop: "12px" }}>
-                        <h5 style={{ display: "flex", alignItems: "center", gap: "6px", color: "white" }}><Star size={14} fill="var(--warning)" color="var(--warning)" /> Buyer Review:</h5>
-                        <p style={{ fontStyle: "italic", fontSize: "0.85rem", color: "var(--gray-600)", marginTop: "6px" }}>
-                          "{order.review.comment}" - Rated <strong style={{ color: "var(--secondary)" }}>{order.review.rating} / 5 Stars</strong>
-                        </p>
-                      </div>
-                    )}
+                            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                              <span style={{ fontSize: "0.75rem", color: "var(--gray-600)", fontWeight: "bold" }}>CONTRIBUTORS / SUB-ORDERS:</span>
+                              {orders.map(order => (
+                                <div key={order.id} style={{ background: "rgba(255,255,255,0.01)", border: "1px solid var(--glass-border)", borderRadius: "8px", padding: "12px" }}>
+                                  <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" }}>
+                                    <div>
+                                      <strong style={{ color: "white", fontSize: "0.85rem" }}>{order.buyerName}</strong>
+                                      <div style={{ fontSize: "0.75rem", color: "var(--gray-600)" }}>📞 {order.buyerPhone} | Sub-Order #{order.id}</div>
+                                    </div>
+                                    <div style={{ textAlign: "right" }}>
+                                      <div style={{ fontSize: "0.85rem", color: "var(--secondary-light)", fontWeight: "bold" }}>₦{order.totalAmount.toLocaleString()}</div>
+                                      <div style={{ fontSize: "0.75rem", color: "var(--gray-600)" }}>Qty: {order.quantity} | Delivery Share: ₦{order.deliveryFee.toLocaleString()}</div>
+                                    </div>
+                                  </div>
+                                  
+                                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "10px", borderTop: "1px solid rgba(255,255,255,0.03)", paddingTop: "8px" }}>
+                                    <span className={`badge-status ${order.status.toLowerCase().replace(" ", "-")}`} style={{ fontSize: "0.7rem", padding: "2px 8px" }}>
+                                      {order.status}
+                                    </span>
+                                    {order.status === "Requested" && (
+                                      <div style={{ display: "flex", gap: "6px" }}>
+                                        <button className="btn btn-outline btn-xs" style={{ padding: "4px 8px", fontSize: "0.7rem" }} onClick={() => handleRejectOrder(order.id)}>Reject</button>
+                                        <button className="btn btn-primary btn-xs" style={{ padding: "4px 8px", fontSize: "0.7rem" }} onClick={() => handleAcceptOrder(order.id)}>Accept</button>
+                                      </div>
+                                    )}
+                                    {order.status === "Paid" && (
+                                      <button className="btn btn-secondary btn-xs" style={{ padding: "4px 8px", fontSize: "0.7rem" }} onClick={() => handleConfirmPayment(order.id)}>
+                                        Mark Ready & Dispatch
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
-                ))}
+                )}
+
+                {/* 2. Direct Customer Orders */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                  {myOrders.some(o => o.isGroupBuy) && (
+                    <h4 style={{ display: "flex", alignItems: "center", gap: "8px", color: "var(--primary-light)", margin: "10px 0 6px 0", fontSize: "1.05rem" }}>
+                      <ShoppingBag size={16} /> Direct Customer Orders ({myOrders.filter(o => !o.isGroupBuy).length})
+                    </h4>
+                  )}
+                  {myOrders.filter(o => !o.isGroupBuy).map(order => (
+                    <div key={order.id} className={`dashboard-order-card ${["Paid", "Assigned", "Picked Up", "En Route"].includes(order.status) ? "pending" : ["Completed", "Reviewed"].includes(order.status) ? "completed" : order.status === "Rejected" || order.status === "Cancelled" ? "cancelled" : ""}`}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--glass-border)", paddingBottom: "12px", marginBottom: "12px", flexWrap: "wrap", gap: "8px" }}>
+                        <div>
+                          <strong style={{ color: "white" }}>Order ID: {order.id}</strong>
+                          <span style={{ fontSize: "0.85rem", color: "var(--gray-600)", marginLeft: "12px" }}>Placed on: {order.date}</span>
+                        </div>
+                        <span className={`badge-status ${order.status.toLowerCase().replace(" ", "-")}`}>
+                          {order.status}
+                        </span>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
+                        <div>
+                          <small style={{ color: "var(--gray-600)" }}>Buyer Contact</small>
+                          <div style={{ fontWeight: "700", color: "white", marginTop: "2px" }}>{order.buyerName}</div>
+                          <div style={{ fontSize: "0.85rem", color: "var(--gray-600)" }}>📞 {order.buyerPhone}</div>
+                        </div>
+                        <div>
+                          <small style={{ color: "var(--gray-600)" }}>Produce Details</small>
+                          <div style={{ fontWeight: "700", color: "white", marginTop: "2px" }}>{order.productName}</div>
+                          <div style={{ fontSize: "0.85rem", color: "var(--gray-600)" }}>Qty: {order.quantity} | Total: <strong style={{ color: "var(--secondary)" }}>₦{order.totalAmount.toLocaleString()}</strong></div>
+                        </div>
+                        <div>
+                          <small style={{ color: "var(--gray-600)" }}>Delivery Method</small>
+                          <div style={{ fontSize: "0.85rem", color: "var(--gray-800)", marginTop: "2px" }}>Logistics: {order.deliveryPartnerName || "Pending Carrier Claim"}</div>
+                        </div>
+                      </div>
+                      
+                      {/* Order Escrow Flow Timeline */}
+                      <div style={{ marginTop: "20px", marginBottom: "12px", background: "rgba(0,0,0,0.1)", border: "1px solid var(--glass-border)", padding: "14px 10px", borderRadius: "10px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", position: "relative" }}>
+                          <div style={{ position: "absolute", left: "20px", right: "20px", top: "8px", height: "2px", background: "rgba(255,255,255,0.08)", zIndex: 1 }} />
+                          <div style={{ 
+                            position: "absolute", 
+                            left: "20px", 
+                            width: `${
+                              order.status === "Requested" ? "0%" :
+                              order.status === "Accepted" ? "20%" :
+                              order.status === "Paid" ? "40%" :
+                              ["Assigned", "Picked Up", "En Route"].includes(order.status) ? "60%" :
+                              order.status === "Delivered" ? "80%" : "100%"
+                            }`,
+                            top: "8px", 
+                            height: "2px", 
+                            background: "var(--primary)", 
+                            zIndex: 1,
+                            transition: "width 0.4s ease"
+                          }} />
+                          
+                          {[
+                            { key: "Requested", label: "Requested" },
+                            { key: "Accepted", label: "Accepted" },
+                            { key: "Paid", label: "Escrow Paid" },
+                            { key: "Dispatched", label: "In Transit" },
+                            { key: "Delivered", label: "Delivered" },
+                            { key: "Completed", label: "Released" }
+                          ].map((step, idx) => {
+                            const isCompleted = 
+                              (step.key === "Requested" && ["Requested", "Accepted", "Paid", "Assigned", "Picked Up", "En Route", "Delivered", "Completed", "Reviewed"].includes(order.status)) ||
+                              (step.key === "Accepted" && ["Accepted", "Paid", "Assigned", "Picked Up", "En Route", "Delivered", "Completed", "Reviewed"].includes(order.status)) ||
+                              (step.key === "Paid" && ["Paid", "Assigned", "Picked Up", "En Route", "Delivered", "Completed", "Reviewed"].includes(order.status)) ||
+                              (step.key === "Dispatched" && ["Assigned", "Picked Up", "En Route", "Delivered", "Completed", "Reviewed"].includes(order.status)) ||
+                              (step.key === "Delivered" && ["Delivered", "Completed", "Reviewed"].includes(order.status)) ||
+                              (step.key === "Completed" && ["Completed", "Reviewed"].includes(order.status));
+                            
+                            const isActive = 
+                              (step.key === "Requested" && order.status === "Requested") ||
+                              (step.key === "Accepted" && order.status === "Accepted") ||
+                              (step.key === "Paid" && order.status === "Paid") ||
+                              (step.key === "Dispatched" && ["Assigned", "Picked Up", "En Route"].includes(order.status)) ||
+                              (step.key === "Delivered" && order.status === "Delivered") ||
+                              (step.key === "Completed" && ["Completed", "Reviewed"].includes(order.status));
+
+                            return (
+                              <div key={step.key} style={{ display: "flex", flexDirection: "column", alignItems: "center", zIndex: 2 }}>
+                                <div style={{ 
+                                  width: "18px", 
+                                  height: "18px", 
+                                  borderRadius: "50%", 
+                                  background: isCompleted ? "var(--primary)" : "#14251c",
+                                  border: `2px solid ${isActive ? "var(--secondary-light)" : "var(--glass-border)"}`,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: "0.55rem",
+                                  fontWeight: "bold",
+                                  color: isCompleted ? "black" : "var(--gray-600)",
+                                  boxShadow: isActive ? "0 0 8px var(--secondary)" : "none"
+                                }}>
+                                  <span style={{ display: "flex", justifyContent: "center", alignItems: "center", width: "100%", height: "100%" }}>
+                                    {isCompleted ? "✓" : idx + 1}
+                                  </span>
+                                </div>
+                                <span style={{ fontSize: "0.6rem", marginTop: "4px", color: isActive ? "var(--secondary-light)" : isCompleted ? "white" : "var(--gray-600)", fontWeight: isActive || isCompleted ? "bold" : "normal" }}>
+                                  {step.label}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Operational actions for farmer */}
+                      {order.status === "Requested" && (
+                        <div style={{ display: "flex", gap: "10px", marginTop: "20px", justifyContent: "flex-end" }}>
+                          <button className="btn btn-outline btn-sm" onClick={() => handleRejectOrder(order.id)}>
+                            <X size={14} /> Reject
+                          </button>
+                          <button className="btn btn-primary btn-sm" onClick={() => handleAcceptOrder(order.id)}>
+                            <Check size={14} /> Accept & Invoice
+                          </button>
+                        </div>
+                      )}
+
+                      {order.status === "Paid" && (
+                        <div style={{ display: "flex", gap: "10px", marginTop: "20px", justifyContent: "flex-end" }}>
+                          <button className="btn btn-secondary btn-sm" onClick={() => handleConfirmPayment(order.id)}>
+                            <Check size={14} style={{ marginRight: "4px" }} /> Mark Ready & Dispatch Logistics
+                          </button>
+                        </div>
+                      )}
+                      
+                      {order.review && (
+                        <div style={{ marginTop: "20px", borderTop: "1px solid var(--glass-border)", paddingTop: "12px" }}>
+                          <h5 style={{ display: "flex", alignItems: "center", gap: "6px", color: "white" }}><Star size={14} fill="var(--warning)" color="var(--warning)" /> Buyer Review:</h5>
+                          <p style={{ fontStyle: "italic", fontSize: "0.85rem", color: "var(--gray-600)", marginTop: "6px" }}>
+                            "{order.review.comment}" - Rated <strong style={{ color: "var(--secondary)" }}>{order.review.rating} / 5 Stars</strong>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </motion.div>
@@ -859,6 +1031,139 @@ export default function FarmerDashboard({ activeUser, onSwitchView }) {
               </div>
             </div>
 
+            {/* Sales Revenue & LGA Demand Interactive Charts */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "20px" }}>
+              {/* Monthly Revenue Bar Chart */}
+              <div className="card" style={{ padding: "20px" }}>
+                <h4 style={{ color: "white", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <TrendingUp size={16} style={{ color: "var(--primary)" }} /> Monthly Sales Revenue
+                </h4>
+                <div style={{ height: "200px", position: "relative" }}>
+                  <svg viewBox="0 0 400 200" width="100%" height="100%">
+                    {/* Y Axis Grid lines */}
+                    {[40, 80, 120, 160].map((y, i) => (
+                      <line key={i} x1="30" y1={y} x2="380" y2={y} stroke="rgba(255,255,255,0.05)" strokeWidth="1" strokeDasharray="3,3" />
+                    ))}
+                    
+                    {/* Bars data: [Month, Value, Height] */}
+                    {[
+                      { month: "Jan", val: 45000, h: 50 },
+                      { month: "Feb", val: 90000, h: 100 },
+                      { month: "Mar", val: 60000, h: 67 },
+                      { month: "Apr", val: 120000, h: 133 },
+                      { month: "May", val: 85000, h: 94 },
+                      { month: "Jun", val: 150000, h: 166 }
+                    ].map((item, idx) => {
+                      const barWidth = 32;
+                      const spacing = 55;
+                      const x = 45 + idx * spacing;
+                      const y = 170 - item.h;
+                      
+                      const isHovered = hoveredBar === idx;
+                      
+                      return (
+                        <g 
+                          key={idx}
+                          onMouseEnter={() => setHoveredBar(idx)}
+                          onMouseLeave={() => setHoveredBar(null)}
+                          onTouchStart={() => setHoveredBar(idx)}
+                          style={{ cursor: "pointer" }}
+                        >
+                          {/* Shadow Bar (Glow) */}
+                          {isHovered && (
+                            <rect 
+                              x={x - 2} 
+                              y={y - 2} 
+                              width={barWidth + 4} 
+                              height={item.h + 2} 
+                              rx="6" 
+                              fill="var(--primary)" 
+                              opacity="0.15" 
+                            />
+                          )}
+                          
+                          {/* Active Bar */}
+                          <motion.rect 
+                            x={x} 
+                            y={y} 
+                            width={barWidth} 
+                            height={item.h} 
+                            rx="4" 
+                            fill={isHovered ? "var(--secondary)" : "var(--primary)"}
+                            initial={{ height: 0, y: 170 }}
+                            animate={{ height: item.h, y: y }}
+                            transition={{ duration: 0.8, delay: idx * 0.05 }}
+                          />
+                          
+                          {/* Month Label */}
+                          <text x={x + barWidth / 2} y="190" fill="var(--gray-600)" fontSize="10" textAnchor="middle" fontWeight="bold">
+                            {item.month}
+                          </text>
+
+                          {/* Hover Tooltip inside SVG */}
+                          {isHovered && (
+                            <g>
+                              <rect x={x - 25} y={y - 30} width={82} height={20} rx="4" fill="var(--dark)" stroke="var(--glass-border)" strokeWidth="1" />
+                              <text x={x + barWidth / 2} y={y - 16} fill="white" fontSize="9" textAnchor="middle" fontWeight="bold">
+                                ₦{item.val.toLocaleString()}
+                              </text>
+                            </g>
+                          )}
+                        </g>
+                      );
+                    })}
+                    <line x1="30" y1="170" x2="380" y2="170" stroke="var(--glass-border)" strokeWidth="1.5" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* LGA Demand Breakdown */}
+              <div className="card" style={{ padding: "20px" }}>
+                <h4 style={{ color: "white", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
+                  <MapPin size={16} style={{ color: "var(--secondary)" }} /> LGA Demand Breakdown
+                </h4>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginTop: "12px" }}>
+                  {[
+                    { name: "Uyo LGA", pct: 40, color: "var(--primary)" },
+                    { name: "Eket LGA", pct: 25, color: "var(--secondary)" },
+                    { name: "Itu LGA", pct: 20, color: "var(--primary-light)" },
+                    { name: "Abak LGA", pct: 15, color: "var(--secondary-light)" }
+                  ].map((lga, i) => {
+                    const radius = 25;
+                    const strokeWidth = 6;
+                    const circ = 2 * Math.PI * radius;
+                    const offset = circ - (lga.pct / 100) * circ;
+                    
+                    return (
+                      <div key={i} className="card" style={{ padding: "10px", display: "flex", flexDirection: "column", alignItems: "center", background: "rgba(0,0,0,0.1)" }}>
+                        <svg width="60" height="60" viewBox="0 0 70 70">
+                          <circle cx="35" cy="35" r={radius} stroke="rgba(255,255,255,0.03)" strokeWidth={strokeWidth} fill="transparent" />
+                          <motion.circle 
+                            cx="35" 
+                            cy="35" 
+                            r={radius} 
+                            stroke={lga.color} 
+                            strokeWidth={strokeWidth} 
+                            fill="transparent" 
+                            strokeDasharray={circ}
+                            initial={{ strokeDashoffset: circ }}
+                            animate={{ strokeDashoffset: offset }}
+                            transition={{ duration: 1, delay: i * 0.1 }}
+                            strokeLinecap="round"
+                            transform="rotate(-90 35 35)"
+                          />
+                          <text x="35" y="40" fill="white" fontSize="10" fontWeight="bold" textAnchor="middle">
+                            {lga.pct}%
+                          </text>
+                        </svg>
+                        <span style={{ fontSize: "0.75rem", color: "white", marginTop: "6px", fontWeight: "bold" }}>{lga.name}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
             {/* Sales ledger info */}
             <div className="card" style={{ padding: "20px" }}>
               <h4 style={{ color: "white", marginBottom: "16px" }}>Top Product Sales Analytics</h4>
@@ -930,9 +1235,14 @@ export default function FarmerDashboard({ activeUser, onSwitchView }) {
                     </select>
                   </div>
                   
-                  <div className="form-field">
+                   <div className="form-field">
                     <label>Price (₦) *</label>
                     <input type="number" placeholder="Price in Naira" value={prodPrice} onChange={(e) => setProdPrice(e.target.value)} required />
+                    {getSuggestedPriceRange() && (
+                      <span style={{ fontSize: "0.75rem", color: "var(--secondary-light)", marginTop: "4px" }}>
+                        💡 Suggested: ₦{getSuggestedPriceRange().min.toLocaleString()} - ₦{getSuggestedPriceRange().max.toLocaleString()} ({getSuggestedPriceRange().product})
+                      </span>
+                    )}
                   </div>
 
                   <div className="form-field">

@@ -31,6 +31,16 @@ export default function Auth({ onAuthSuccess, onBackToLanding }) {
   const selectedLgaObj = AKWA_IBOM_LOCATIONS.find((loc) => loc.lga === lga);
   const townsList = selectedLgaObj ? selectedLgaObj.towns : [];
 
+  const getPasswordStrength = (pw) => {
+    if (!pw) return "";
+    if (pw.length < 5) return "weak";
+    if (pw.length < 8) return "fair";
+    const hasLetters = /[a-zA-Z]/.test(pw);
+    const hasNumbers = /[0-9]/.test(pw);
+    if (hasLetters && hasNumbers) return "strong";
+    return "fair";
+  };
+
   const handleAuth = async (e) => {
     e.preventDefault();
     setError("");
@@ -435,13 +445,25 @@ export default function Auth({ onAuthSuccess, onBackToLanding }) {
                 </div>
 
                 <div className="form-field">
-                  <label>User Role *</label>
-                  <select value={role} onChange={(e) => setRole(e.target.value)}>
-                    <option value="Buyer">Buyer (Browse & Purchase)</option>
-                    <option value="Farmer">Farmer (Produce Crops/Livestock)</option>
-                    <option value="Seller">Seller / Business Owner (Classifieds, Storefronts, Services)</option>
-                    <option value="Logistics Partner">Logistics Delivery Carrier</option>
-                  </select>
+                  <label style={{ marginBottom: "10px" }}>Choose Your Profile Role *</label>
+                  <div className="onboarding-role-grid">
+                    {[
+                      { id: "Buyer", label: "Buyer", desc: "Purchase crops, secure escrow protection.", icon: "🛒" },
+                      { id: "Farmer", label: "Farmer", desc: "List harvests, manage cooperative sales.", icon: "👨‍🌾" },
+                      { id: "Seller", label: "Seller", desc: "Storefronts, ads, services, local retail.", icon: "🏪" },
+                      { id: "Logistics Partner", label: "Carrier", desc: "Fulfill shipping orders, earn flat fees.", icon: "🚚" }
+                    ].map(r => (
+                      <div 
+                        key={r.id} 
+                        className={`onboarding-role-card ${role === r.id ? "active" : ""}`}
+                        onClick={() => setRole(r.id)}
+                      >
+                        <span style={{ fontSize: "1.6rem", display: "block", marginBottom: "6px" }}>{r.icon}</span>
+                        <strong style={{ color: "white", fontSize: "0.85rem" }}>{r.label}</strong>
+                        <p style={{ fontSize: "0.68rem", color: "var(--gray-600)", margin: "4px 0 0 0", lineHeight: "1.2" }}>{r.desc}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Farmer & Seller Profile Fields */}
@@ -562,6 +584,22 @@ export default function Auth({ onAuthSuccess, onBackToLanding }) {
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
+              {!isLogin && password && (
+                <div style={{ marginTop: "8px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", color: "var(--gray-600)" }}>
+                    <span>Password Strength:</span>
+                    <strong style={{ 
+                      color: getPasswordStrength(password) === "strong" ? "var(--primary)" : 
+                             getPasswordStrength(password) === "fair" ? "var(--secondary-light)" : "var(--danger)"
+                    }}>
+                      {getPasswordStrength(password).toUpperCase()}
+                    </strong>
+                  </div>
+                  <div className="password-strength-bar">
+                    <div className={`password-strength-fill ${getPasswordStrength(password)}`} />
+                  </div>
+                </div>
+              )}
               {isLogin && (
                 <div style={{ textAlign: "right", marginTop: "6px" }}>
                   <button

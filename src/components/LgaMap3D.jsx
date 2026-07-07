@@ -180,18 +180,18 @@ export default function LgaMap3D({ db, selectedLga, onLgaSelect }) {
       const lineMat = new THREE.LineBasicMaterial({
         color: 0x10b981,
         transparent: true,
-        opacity: 0.2,
+        opacity: 0.08,
         linewidth: 1
       });
       const routeLine = new THREE.Line(lineGeom, lineMat);
       scene.add(routeLine);
 
       // Animateable logistic cargo package (sphere)
-      const cargoGeom = new THREE.SphereGeometry(0.035, 8, 8);
+      const cargoGeom = new THREE.SphereGeometry(0.015, 6, 6);
       const cargoMat = new THREE.MeshBasicMaterial({
-        color: 0xf59e0b, // Amber glowing parcel
+        color: 0x10b981,
         transparent: true,
-        opacity: 0.9
+        opacity: 0.4
       });
       const cargoMesh = new THREE.Mesh(cargoGeom, cargoMat);
       scene.add(cargoMesh);
@@ -199,8 +199,84 @@ export default function LgaMap3D({ db, selectedLga, onLgaSelect }) {
       routes.push({
         curve,
         mesh: cargoMesh,
-        speed: 0.15 + Math.random() * 0.15,
-        offset: Math.random() // Randomize start phase
+        speed: 0.12 + Math.random() * 0.12,
+        offset: Math.random()
+      });
+    });
+
+    // 8.5 Dynamic Active Shipments Routing
+    const activeShipmentMeshes = [];
+    const activeOrders = db && db.orders ? db.orders.filter(o => 
+      (o.status === "In Transit" || o.status === "Out for Delivery" || o.deliveryStatus === "In Transit" || o.deliveryStatus === "Out for Delivery")
+    ) : [];
+
+    activeOrders.forEach(order => {
+      // Find source (farmer LGA) and destination (buyer LGA)
+      const product = db.products.find(p => p.id === order.productId);
+      const sourceLgaName = product ? product.lga : (db.users.find(u => u.id === order.farmerId)?.lga || "Uyo");
+      const destLgaName = db.users.find(u => u.id === order.buyerId)?.lga || "Uyo";
+
+      const sourceLgaData = lgasData.find(l => l.name.toLowerCase() === sourceLgaName.toLowerCase()) || uyoData;
+      const destLgaData = lgasData.find(l => l.name.toLowerCase() === destLgaName.toLowerCase()) || uyoData;
+
+      const sX = (sourceLgaData.x - 200) / 45;
+      const sZ = (sourceLgaData.y - 130) / 45;
+      const sHeight = lgaPillarHeights[sourceLgaData.name] || 0.4;
+      const sPos = new THREE.Vector3(sX, sHeight, sZ);
+
+      const dX = (destLgaData.x - 200) / 45;
+      const dZ = (destLgaData.y - 130) / 45;
+      const dHeight = lgaPillarHeights[destLgaData.name] || 0.4;
+      const dPos = new THREE.Vector3(dX, dHeight, dZ);
+
+      let curve;
+      if (sourceLgaData.name === destLgaData.name) {
+        // Localized routing orbit
+        curve = new THREE.CatmullRomCurve3([
+          sPos,
+          new THREE.Vector3(sX + 0.15, sHeight + 0.4, sZ),
+          new THREE.Vector3(sX, sHeight + 0.6, sZ + 0.15),
+          new THREE.Vector3(sX - 0.15, sHeight + 0.4, sZ),
+          sPos
+        ]);
+      } else {
+        const midPoint = new THREE.Vector3().addVectors(sPos, dPos).multiplyScalar(0.5);
+        midPoint.y += 1.4; // elevated route peak
+        curve = new THREE.QuadraticBezierCurve3(sPos, midPoint, dPos);
+      }
+
+      const points = curve.getPoints(30);
+      const lineGeom = new THREE.BufferGeometry().setFromPoints(points);
+      const lineMat = new THREE.LineBasicMaterial({
+        color: 0xf97316, // Premium high-visibility orange
+        transparent: true,
+        opacity: 0.9,
+        linewidth: 3
+      });
+      const routeLine = new THREE.Line(lineGeom, lineMat);
+      scene.add(routeLine);
+
+      // Crate box mesh
+      const cargoGeom = new THREE.BoxGeometry(0.09, 0.09, 0.09);
+      const cargoMat = new THREE.MeshStandardMaterial({
+        color: 0xf59e0b,
+        emissive: 0xd97706,
+        emissiveIntensity: 0.8,
+        roughness: 0.2,
+        metalness: 0.9
+      });
+      const cargoMesh = new THREE.Mesh(cargoGeom, cargoMat);
+      scene.add(cargoMesh);
+
+      activeShipmentMeshes.push({
+        orderId: order.id,
+        curve,
+        mesh: cargoMesh,
+        lineMesh: routeLine,
+        boxGeom: cargoGeom,
+        boxMat: cargoMat,
+        lineGeom,
+        lineMat
       });
     });
 
@@ -340,15 +416,37 @@ export default function LgaMap3D({ db, selectedLga, onLgaSelect }) {
         selectionRing.position.y = -999;
       }
 
-      // B. Update Logistics Cargo Packets
+      // B. Update Ambient Logistics Cargo Packets
       routes.forEach(route => {
         const timeFactor = (elapsed * route.speed + route.offset) % 1.0;
         route.curve.getPointAt(timeFactor, tempV);
         route.mesh.position.copy(tempV);
         
-        // Scale pulse effect for the parcel
         const pScale = 0.8 + Math.sin(elapsed * 8 + route.offset * 10) * 0.2;
         route.mesh.scale.set(pScale, pScale, pScale);
+      });
+
+      // B.5 Update Active Shipment Cargo Packages (glowing boxes)
+      activeShipmentMeshes.forEach(shipment => {
+        // Read directly from current database state to support instant hot updates
+        const storedData = localStorage.getItem("ibom_agro_market_db");
+        if (storedData) {
+          try {
+            const freshDb = JSON.parse(storedData);
+            const curOrder = freshDb.orders.find(o => o.id === shipment.orderId);
+            const progress = curOrder ? (curOrder.transitPercentage || 0) / 100 : 0;
+            
+            shipment.curve.getPointAt(progress, tempV);
+            shipment.mesh.position.copy(tempV);
+            
+            // Spin active crates for visual distinction
+            shipment.mesh.rotation.x = elapsed * 1.6;
+            shipment.mesh.rotation.y = elapsed * 1.3;
+            
+            const cargoScale = 1.0 + Math.sin(elapsed * 8) * 0.12;
+            shipment.mesh.scale.set(cargoScale, cargoScale, cargoScale);
+          } catch(e) {}
+        }
       });
 
       // C. Update Floating Particle Drift
@@ -357,7 +455,7 @@ export default function LgaMap3D({ db, selectedLga, onLgaSelect }) {
         let yVal = posAttr.getY(i);
         yVal += speeds[i];
         if (yVal > 4.0) {
-          yVal = 0.0; // Reset to ground
+          yVal = 0.0;
         }
         posAttr.setY(i, yVal);
       }
@@ -367,13 +465,10 @@ export default function LgaMap3D({ db, selectedLga, onLgaSelect }) {
       lgaMeshes.forEach(mesh => {
         const labelDOM = labelsContainer.querySelector(`[data-lga="${mesh.userData.name}"]`);
         if (labelDOM) {
-          // Point above the top of the pillar
           tempV.set(mesh.position.x, mesh.userData.height + 0.35, mesh.position.z);
-          
-          mesh.localToWorld(tempV); // correct for scene-level rotation/matrices
+          mesh.localToWorld(tempV);
           tempV.project(camera);
 
-          // Render only if in front of camera
           if (tempV.z > 1.0) {
             labelDOM.style.display = "none";
           } else {
@@ -431,11 +526,17 @@ export default function LgaMap3D({ db, selectedLga, onLgaSelect }) {
         r.mesh.geometry.dispose();
         r.mesh.material.dispose();
       });
+      activeShipmentMeshes.forEach(s => {
+        s.mesh.geometry.dispose();
+        s.mesh.material.dispose();
+        s.lineMesh.geometry.dispose();
+        s.lineMesh.material.dispose();
+      });
 
       controls.dispose();
       renderer.dispose();
     };
-  }, [db]); // Reinitialize only if DB (live listing stats) changes
+  }, [db ? db.orders.filter(o => o.status === "In Transit" || o.status === "Out for Delivery" || o.deliveryStatus === "In Transit" || o.deliveryStatus === "Out for Delivery").length : 0]);
 
   return (
     <div
@@ -443,7 +544,7 @@ export default function LgaMap3D({ db, selectedLga, onLgaSelect }) {
       style={{
         position: "relative",
         width: "100%",
-        height: "420px",
+        height: "min(420px, 60vh)",
         background: "rgba(0, 0, 0, 0.15)",
         borderRadius: "16px",
         border: "1px solid var(--glass-border)",

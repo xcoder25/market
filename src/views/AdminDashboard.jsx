@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Users, FileText, CheckCircle, AlertTriangle, ShieldCheck, DollarSign, RefreshCw, BarChart2 } from "lucide-react";
+import { Users, FileText, CheckCircle, AlertTriangle, ShieldCheck, DollarSign, RefreshCw, BarChart2, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getDB, upgradeVerification, updateMarketPrice } from "../db/store";
 
@@ -350,29 +350,31 @@ export default function AdminDashboard() {
                       </td>
                       <td>
                         <div style={{ display: "flex", gap: "6px" }}>
-                          <button 
-                            className="btn btn-outline btn-sm" 
-                            onClick={() => handleVerify(farmer.id, "Bronze")}
-                            disabled={farmer.verification === "Bronze"}
-                          >
-                            Bronze
-                          </button>
-                          <button 
-                            className="btn btn-secondary btn-sm" 
-                            onClick={() => handleVerify(farmer.id, "Silver")}
-                            disabled={farmer.verification === "Silver"}
-                            style={{ padding: "6px 12px" }}
-                          >
-                            Silver
-                          </button>
-                          <button 
-                            className="btn btn-primary btn-sm" 
-                            onClick={() => handleVerify(farmer.id, "Gold")}
-                            disabled={farmer.verification === "Gold"}
-                            style={{ padding: "6px 12px" }}
-                          >
-                            Gold
-                          </button>
+                          {["Bronze", "Silver", "Gold"].map(level => {
+                            const isSelected = farmer.verification === level;
+                            return (
+                              <button 
+                                key={level}
+                                className={`btn btn-sm ${isSelected ? "btn-primary" : "btn-outline"}`}
+                                onClick={() => handleVerify(farmer.id, level)}
+                                style={{ 
+                                  padding: "6px 12px", 
+                                  borderRadius: "12px", 
+                                  fontSize: "0.75rem",
+                                  fontWeight: "bold",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "4px",
+                                  border: isSelected ? "1px solid var(--primary-light)" : "1px solid var(--glass-border)",
+                                  background: isSelected ? "var(--primary)" : "rgba(255,255,255,0.02)",
+                                  color: isSelected ? "black" : "white"
+                                }}
+                              >
+                                {isSelected && <Check size={10} style={{ color: "black" }} />}
+                                {level}
+                              </button>
+                            );
+                          })}
                         </div>
                       </td>
                     </tr>
@@ -486,14 +488,12 @@ export default function AdminDashboard() {
             <p style={{ color: "var(--gray-600)", marginBottom: "20px", fontSize: "0.85rem" }}>
               Immutable administrative logs capturing user registration events, verification shifts, listing activations, and payment authorizations.
             </p>
-            <div style={{ maxHeight: "350px", overflowY: "auto", border: "1px solid var(--glass-border)", borderRadius: "12px", background: "rgba(0,0,0,0.15)" }}>
+            <div className="audit-trail-console">
               {db.auditLogs.map(log => (
-                <div key={log.id} className="audit-log-item">
-                  <div>
-                    <span style={{ color: "var(--primary)", fontWeight: "bold" }}>[{log.action}]</span>
-                    <span style={{ marginLeft: "12px", color: "white" }}>{log.details}</span>
-                  </div>
-                  <span style={{ color: "var(--gray-600)" }}>{new Date(log.timestamp).toLocaleTimeString()}</span>
+                <div key={log.id} className="audit-console-line">
+                  <span className="audit-console-timestamp">[{new Date(log.timestamp).toISOString().split('T')[1].slice(0, 8)}]</span>
+                  <span className="audit-console-tag">[{log.action.toUpperCase()}]</span>
+                  <span style={{ color: "white", marginLeft: "8px" }}>{log.details}</span>
                 </div>
               ))}
             </div>
